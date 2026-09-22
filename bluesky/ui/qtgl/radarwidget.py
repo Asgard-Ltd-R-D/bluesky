@@ -3,7 +3,7 @@ from ctypes import c_float, c_int, Structure
 import numpy as np
 
 from bluesky.tools import shapes
-from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtCore import Qt, QEvent, QTimer
 
 import bluesky as bs
 from bluesky.core import Signal
@@ -123,6 +123,14 @@ class RadarWidget(glh.RenderWidget):
         self.panzoom_event = Signal('state-changed.panzoom')
         self.panzoom_event.connect(self.on_panzoom)
 
+        # Mouse-wheel pan/zoom has no natural "gesture finished" event (unlike
+        # a mouse drag, which ends on MouseButtonRelease). This idle timer
+        # treats a short pause after the last wheel tick as "finished", so a
+        # PANZOOM update still gets sent to the sim - see _wheel_finished().
+        self._wheelidle_timer = QTimer()
+        self._wheelidle_timer.setSingleShot(True)
+        self._wheelidle_timer.timeout.connect(self._wheel_finished)
+
     def initializeGL(self):
         """Initialize OpenGL, VBOs, upload data on the GPU, etc."""
         super().initializeGL()
@@ -226,6 +234,23 @@ class RadarWidget(glh.RenderWidget):
         self.shaderset.set_wrap(self.wraplon, self.wrapdir)
         self.shaderset.set_pan_and_zoom(self.pan[0], self.pan[1], self.zoom)
 
+        # Send the final view to the sim whenever a pan/zoom change is
+        # actually finished - this covers mouse-drag release (see event()),
+        # a settled mouse-wheel pan/zoom (see _wheel_finished()), and any
+        # instantaneous change such as a typed PAN/ZOOM stack command,
+        # which always arrives here with finished=True.
+        if finished:
+            self._wheelidle_timer.stop()
+            bs.net.send(b'PANZOOM', dict(pan=(self.pan[0], self.pan[1]),
+                                         zoom=self.zoom, ar=self.ar, absolute=True))
+
+    def _wheel_finished(self):
+        ''' Called a short idle period after the last wheel-driven pan/zoom
+            tick, since the mouse wheel has no equivalent of a drag's
+            MouseButtonRelease to mark the gesture as finished. '''
+        self.panzoomchanged = False
+        self.panzoom_event.emit(ss.get().panzoom, True)
+
     def setpanzoom(self, pan=None, zoom=None, origin=None, absolute=True, finished=True):
         # Absolute or relative pan operation
         if pan is not None:
@@ -275,6 +300,7 @@ class RadarWidget(glh.RenderWidget):
                 except AttributeError:
                     zoom *= (1.0 + 0.001 * event.delta())
                 self.panzoomchanged = True
+                self._wheelidle_timer.start(400)
                 return self.setpanzoom(zoom=zoom, origin=origin, absolute=False, finished=False)
 
             # For touchpad scroll (2D) is used for panning
@@ -283,6 +309,7 @@ class RadarWidget(glh.RenderWidget):
                     dlat = 0.01 * event.pixelDelta().y() / (self.zoom * self.ar)
                     dlon = -0.01 * event.pixelDelta().x() / (self.zoom * self.flat_earth)
                     self.panzoomchanged = True
+                    self._wheelidle_timer.start(400)
                     return self.setpanzoom(pan=[dlat, dlon], absolute=False, finished=False)
                 except AttributeError:
                     pass
@@ -336,11 +363,10 @@ class RadarWidget(glh.RenderWidget):
             event.accept()
 
         # Update pan/zoom to simulation thread only when the pan/zoom gesture is finished
+        # (the actual PANZOOM send now happens centrally in on_panzoom())
         elif (event.type() == QEvent.Type.MouseButtonRelease or
               event.type() == QEvent.Type.TouchEnd) and self.panzoomchanged:
             self.panzoomchanged = False
-            bs.net.send(b'PANZOOM', dict(pan=(self.pan[0], self.pan[1]),
-                                         zoom=self.zoom, ar=self.ar, absolute=True))
             self.panzoom_event.emit(ss.get().panzoom, True)
         elif int(event.type()) == 216:
             # 216 is screen change event, but doesn't exist (yet) in pyqt as enum

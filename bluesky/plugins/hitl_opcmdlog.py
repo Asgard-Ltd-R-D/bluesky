@@ -18,13 +18,30 @@
     -----------------------------------------------------------------------
     VERIFIED LIMITATION #1 - command coverage:
 
-    PAN, ZOOM, HELP, ECHO, MAKEDOC and the +/-/= zoom shortcuts are
-    resolved entirely client-side (bluesky/ui/qtgl/mainwindow.py) and never
-    reach the simulation process - they cannot be logged from here. Every
-    other console command (ALT, HDG, SPD, CRE, DEL, ...) does reach here
-    and is logged, including scenario-file-originated ones and commands
-    that fail/error (unlike BlueSky's own SAVEIC, which only records
-    commands that executed successfully).
+    Checked against the actual dispatch logic in
+    bluesky/stack/clientstack.py: most commands that resolve locally on
+    the client (unknown to the sim) still get forwarded to the sim
+    afterwards (e.g. typed HELP/MAKEDOC almost always forward), so they
+    DO end up here. The only commands that are *never* forwarded, and so
+    can never appear as literal command text in this log, are:
+      - ECHO (rare in practice - a "print a note" command, not an ATC
+        action)
+      - PAN, ZOOM, and the +/-/= zoom keyboard shortcuts
+
+    For the second group, this plugin also subscribes to the 'PANZOOM'
+    network broadcast (bluesky/ui/qtgl/radarwidget.py) and logs a
+    synthesized "VIEWCHANGE PAN ... ZOOM ..." row whenever the tracked
+    view changes - see _on_panzoom below. This is a RECONSTRUCTED view
+    state, not the literal text the operator typed (a raw broadcast
+    doesn't distinguish "typed PAN" from "typed ZOOM" from a mouse
+    drag), and is subject to the same best-effort limitations as
+    hitl_fovaclog.py's view tracking (see that plugin's docstring).
+
+    Every other console command (ALT, HDG, SPD, CRE, DEL, ...) reaches
+    here as literal command text and is logged, including
+    scenario-file-originated ones and commands that fail/error (unlike
+    BlueSky's own SAVEIC, which only records commands that executed
+    successfully).
     -----------------------------------------------------------------------
 
     -----------------------------------------------------------------------
@@ -48,6 +65,8 @@
 """
 from bluesky.tools import datalog
 from bluesky.stack.stackbase import Stack
+from bluesky.network.subscriber import subscriber
+import bluesky.network.context as ctx
 
 cmdheader = \
     '#######################################################\n' + \
@@ -57,7 +76,9 @@ cmdheader = \
     '#######################################################\n\n' + \
     'Parameters [Units]:\n' + \
     'Simulation time [s], ' + \
-    'Command text [-] (quoted CSV field, may itself contain commas), ' + \
+    'Command text [-] (quoted CSV field, may itself contain commas; ' + \
+    'a "VIEWCHANGE PAN .. ZOOM .." row is a reconstructed view state, ' + \
+    'not literal typed text - see plugin docstring), ' + \
     'Sender id [-] (non-empty = command arrived from a network client)\n'
 
 cmdlog = None
@@ -111,3 +132,21 @@ def _patch_stack_command_logging():
         return
     Stack.commands = classmethod(_logging_stack_commands)
     Stack._hitl_opcmdlog_patched = True
+
+
+# ---------------------------------------------------------------------
+# PAN/ZOOM (and the +/-/= zoom shortcuts) never reach Stack.commands() -
+# see VERIFIED LIMITATION #1 above. Reuse the same 'PANZOOM' broadcast
+# hitl_fovaclog.py listens to, and log a reconstructed view-change row
+# instead of literal command text.
+# ---------------------------------------------------------------------
+@subscriber(topic='PANZOOM')
+def _on_panzoom(pan=None, zoom=None, ar=None, absolute=True):
+    try:
+        if cmdlog is not None and cmdlog.isopen() and pan is not None and zoom is not None:
+            sender = ctx.sender_id.hex() if ctx.sender_id else ''
+            text = f'VIEWCHANGE PAN {pan[0]:.6f} {pan[1]:.6f} ZOOM {zoom:.6f}'
+            quoted = '"' + text.replace('"', '""') + '"'
+            cmdlog.log(quoted, sender)
+    except Exception as e:
+        print(f'[HITL_OPCMDLOG] PANZOOM logging failed: {e}')
