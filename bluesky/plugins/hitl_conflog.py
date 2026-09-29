@@ -11,8 +11,12 @@
     2. As a row in a dedicated HITLCONFLOG CSV file, for later analysis.
 
     Independent of the AREA/EXP plugin: logs every pair globally, no
-    experiment area needs to be defined. Starts logging immediately on
-    load - no separate "ON" command needed.
+    experiment area needs to be defined.
+
+    Load with:  PLUGIN LOAD HITL_CONFLOG
+    Start with: HITLCONFLOG ON  (starts a fresh CSV; run this again on
+                every scenario run for a clean file each time, same as
+                FOVACLOG/OPCMDLOG/HEARTBEATLOG)
 
     Requires CDMETHOD ON (Conflict Detection) to actually detect
     anything - see bs.traf.cd.confpairs_unique.
@@ -50,7 +54,6 @@ class HitlConflog(Entity):
     def __init__(self):
         super().__init__()
         self.logger = datalog.crelog('HITLCONFLOG', None, confheader)
-        self.logger.start()
         self.prevconf = set()
 
     @timed_function(name='HITL_CONFLOG', dt=1.0)
@@ -67,3 +70,10 @@ class HitlConflog(Entity):
             bs.stack.stack(f'ECHO CONFEND {ac1} {ac2}')
 
         self.prevconf = curconf
+
+    @timed_function(name='HITL_CONFLOG.reset', hook='reset')
+    def reset(self):
+        """ Drop conflict-pair state left over from a previous run, so a
+            fresh scenario load never logs a spurious CONFEND for a pair
+            of aircraft that no longer exist. """
+        self.prevconf = set()

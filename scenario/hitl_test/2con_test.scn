@@ -9,16 +9,19 @@
 # Load the conflict onset/offset logger (see bluesky/plugins/hitl_conflog.py).
 # Logs CONFSTART/CONFEND for every aircraft pair, with exact simulation
 # time, both to its own HITLCONFLOG CSV and as an ECHO into the SAVEIC
-# recording below. Starts logging immediately on load, no "ON" needed.
+# recording below.
 00:00:00.00> PLUGIN LOAD HITL_CONFLOG
-# Start the FOV-filtered aircraft logger and the operator-command logger
-# (see bluesky/plugins/hitl_fovaclog.py and bluesky/plugins/hitl_opcmdlog.py).
-# These MUST be turned on here, inside the scenario, rather than typed
-# manually beforehand in the console - loading a scenario always resets
-# the sim first, which closes any logger that was already open and
-# silently drops all further rows.
+# Start all four HITL loggers here, inside the scenario, rather than
+# typed manually beforehand in the console - loading a scenario always
+# resets the sim first, which closes any logger that was already open
+# and silently drops all further rows. Doing it here guarantees every
+# one of them starts a fresh file on every run of this scenario. See
+# bluesky/plugins/hitl_fovaclog.py, hitl_opcmdlog.py, hitl_conflog.py
+# and hitl_heartbeatlog.py.
 00:00:00.00> FOVACLOG ON
 00:00:00.00> OPCMDLOG ON
+00:00:00.00> HITLCONFLOG ON
+00:00:00.00> HEARTBEATLOG ON
 # Start recording every subsequent stack command (incl. manual resolutions)
 # to a fresh, timestamped, replayable scenario file. For per-command
 # timestamps in CSV form (incl. sender id), see OPCMDLOG instead.
