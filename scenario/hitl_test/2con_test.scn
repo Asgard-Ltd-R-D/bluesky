@@ -6,6 +6,11 @@
 # --- System & Camera Initialization ---
 # Enable Conflict Detection (crucial for visual alerts on the radar)
 00:00:00.00> CDMETHOD ON
+# Load the conflict onset/offset logger (see bluesky/plugins/hitl_conflog.py).
+# Logs CONFSTART/CONFEND for every aircraft pair, with exact simulation
+# time, both to its own HITLCONFLOG CSV and as an ECHO into the SAVEIC
+# recording below. Starts logging immediately on load, no "ON" needed.
+00:00:00.00> PLUGIN LOAD HITL_CONFLOG
 # Start the FOV-filtered aircraft logger and the operator-command logger
 # (see bluesky/plugins/hitl_fovaclog.py and bluesky/plugins/hitl_opcmdlog.py).
 # These MUST be turned on here, inside the scenario, rather than typed
