@@ -1,0 +1,70 @@
+# ==========================================
+# HITL Experiment Scenario - Difficulty tier 5/5: EXTREME
+# Five conflict trials. One warm-up conflict, then a genuine 3-way
+# simultaneous cluster (three unrelated conflicts all live and
+# alerting at once, ~t=00:00:50-00:01:50), then a final conflict after
+# the cluster to test whether focus recovers once the pressure is off.
+# Whole scenario stays under the 3-minute cap.
+# ==========================================
+
+# --- System & Camera Initialization ---
+00:00:00.00> CDMETHOD ON
+00:00:00.00> PLUGIN LOAD HITL_CONFLOG
+00:00:00.00> FOVACLOG ON
+00:00:00.00> OPCMDLOG ON
+00:00:00.00> HITLCONFLOG ON
+00:00:00.00> HEARTBEATLOG ON
+00:00:00.00> SAVEIC HITL_5con_run
+00:00:00.00> PAN 52.0 4.5
+00:00:00.00> ZOOM 0.6
+
+# --- Background Traffic ---
+# Ten aircraft, FL240-FL350 - clear of the FL100/150/180/200/220 used
+# by the five trials below.
+00:00:00.00> CRE BG1, B738, 52.8, 3.2, 090, FL240, 300
+00:00:00.00> CRE BG2, A320, 51.0, 5.7, 270, FL260, 300
+00:00:00.00> CRE BG3, B744, 52.7, 4.9, 180, FL300, 350
+00:00:00.00> CRE BG4, MD11, 51.3, 3.6, 360, FL280, 280
+00:00:00.00> CRE BG5, A319, 51.1, 4.9, 045, FL250, 290
+00:00:00.00> CRE BG6, B772, 52.8, 4.0, 225, FL320, 320
+00:00:00.00> CRE BG7, A333, 51.6, 3.3, 070, FL270, 300
+00:00:00.00> CRE BG8, B789, 53.0, 5.1, 200, FL350, 320
+00:00:00.00> CRE BG9, A388, 51.0, 4.2, 010, FL340, 310
+00:00:00.00> CRE BG10, B77W, 52.9, 3.6, 135, FL290, 330
+
+# ==========================================
+# Trial 1: Head-On Conflict (180 deg dpsi) @ FL100 - warm-up
+# ==========================================
+# Meets at (52.0000N, 4.5000E) at t=00:00:45, resolved well before the
+# cluster below starts.
+00:00:00.00> CRE TARG1, B738, 52.0000, 4.4154, 090, FL100, 250
+00:00:15.00> CRE INTRUDER1, B738, 52.0000, 4.5564, 270, FL100, 250
+
+# ==========================================
+# Trials 2-4: THE CLUSTER - three unrelated conflicts, all live
+# together roughly between t=00:00:50 and t=00:01:50
+# ==========================================
+
+# Trial 2: Crossing Conflict (90 deg dpsi) @ FL150
+# Meets at (51.6000N, 5.0000E) at t=00:01:30.
+00:00:50.00> CRE TARG2, A320, 51.5537, 5.0000, 360, FL150, 250
+00:00:50.00> CRE INTRUDER2, A320, 51.6000, 4.9248, 090, FL150, 250
+
+# Trial 3: Head-On Conflict (180 deg dpsi) @ FL180
+# Meets at (51.9000N, 4.0000E) at t=00:01:40 - 10s after trial 2.
+00:01:00.00> CRE TARG3, A319, 51.9000, 3.9248, 090, FL180, 250
+00:01:00.00> CRE INTRUDER3, A319, 51.9000, 4.0752, 270, FL180, 250
+
+# Trial 4: Shallow Crossing (120 deg dpsi) @ FL200
+# Meets at (51.7500N, 4.6000E) at t=00:01:50 - 10s after trial 3, so
+# for a stretch trials 2, 3 and 4 are all unresolved at the same time.
+00:01:05.00> CRE TARG4, A319, 51.7229, 4.5238, 060, FL200, 260
+00:01:05.00> CRE INTRUDER4, A319, 51.7229, 4.6762, 300, FL200, 260
+
+# ==========================================
+# Trial 5: Shallow Crossing (60 deg dpsi) @ FL220 - after the cluster
+# ==========================================
+# Meets at (52.0645N, 4.3000E) at t=00:02:45, once the cluster above
+# has had time to be resolved - tests recovery of focus, not triage.
+00:02:05.00> CRE TARG5, A319, 52.0645, 4.2609, 030, FL220, 260
+00:02:05.00> CRE INTRUDER5, A319, 52.0645, 4.3391, 330, FL220, 260

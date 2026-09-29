@@ -1,0 +1,56 @@
+# ==========================================
+# HITL Experiment Scenario - Difficulty tier 3/5: OVERLAPPING
+# Three conflict trials. The first two are sequential (like
+# 2con_test.scn); the third is timed to start alerting while the
+# second is still unresolved, forcing the operator to split attention
+# between two live conflicts for a while.
+# ==========================================
+
+# --- System & Camera Initialization ---
+00:00:00.00> CDMETHOD ON
+00:00:00.00> PLUGIN LOAD HITL_CONFLOG
+00:00:00.00> FOVACLOG ON
+00:00:00.00> OPCMDLOG ON
+00:00:00.00> HITLCONFLOG ON
+00:00:00.00> HEARTBEATLOG ON
+00:00:00.00> SAVEIC HITL_3con_run
+00:00:00.00> PAN 52.0 4.5
+00:00:00.00> ZOOM 0.8
+
+# --- Background Traffic ---
+# Six aircraft, FL240-FL320 - clear of the FL100/150/180 used by the
+# three trials below, so every conflict alert seen is one of the three
+# intended trials, never background clutter.
+00:00:00.00> CRE BG1, B738, 52.8, 3.5, 090, FL240, 300
+00:00:00.00> CRE BG2, A320, 51.2, 5.5, 270, FL260, 300
+00:00:00.00> CRE BG3, B744, 52.5, 4.8, 180, FL300, 350
+00:00:00.00> CRE BG4, MD11, 51.5, 3.8, 360, FL280, 280
+00:00:00.00> CRE BG5, A319, 51.3, 4.9, 045, FL250, 290
+00:00:00.00> CRE BG6, B772, 52.6, 4.0, 225, FL320, 320
+
+# ==========================================
+# Trial 1: Head-On Conflict (180 deg dpsi) @ FL100
+# ==========================================
+# Both spawn near t=0, meet head-on at (52.0000N, 4.5000E) at
+# t=00:00:45.
+00:00:00.00> CRE TARG1, B738, 52.0000, 4.4154, 090, FL100, 250
+00:00:15.00> CRE INTRUDER1, B738, 52.0000, 4.5564, 270, FL100, 250
+
+# ==========================================
+# Trial 2: Crossing Conflict (90 deg dpsi) @ FL150
+# ==========================================
+# Meets at (51.6000N, 5.0000E) at t=00:01:35.
+00:00:55.00> CRE TARG2, A320, 51.5537, 5.0000, 360, FL150, 250
+00:00:55.00> CRE INTRUDER2, A320, 51.6000, 4.9248, 090, FL150, 250
+
+# ==========================================
+# Trial 3: Crossing Conflict (90 deg dpsi) @ FL180 - THE OVERLAP
+# ==========================================
+# Meets at (51.8000N, 4.2000E) at t=00:01:55 - only 20s after trial 2's
+# meeting time. With DTLOOK's default 300s lookahead, this conflict is
+# already alerting well before trial 2 is resolved, so for a stretch
+# around t=00:01:15-00:01:55 there are two unrelated live conflicts on
+# screen at once. Kept deliberately shorter than tiers 4-5 - moderate
+# difficulty doesn't need to eat into the full 3-minute cap either.
+00:01:15.00> CRE TARG3, A319, 51.7660, 4.1447, 045, FL180, 260
+00:01:15.00> CRE INTRUDER3, A319, 51.7660, 4.2553, 315, FL180, 260

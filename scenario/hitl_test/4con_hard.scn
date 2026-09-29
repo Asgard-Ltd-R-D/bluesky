@@ -1,0 +1,61 @@
+# ==========================================
+# HITL Experiment Scenario - Difficulty tier 4/5: HARD
+# Four conflict trials in two clusters. Within each cluster the two
+# conflicts are timed only ~20s apart, so both are live and alerting
+# at the same time - real split-attention pressure, twice per run.
+# ==========================================
+
+# --- System & Camera Initialization ---
+00:00:00.00> CDMETHOD ON
+00:00:00.00> PLUGIN LOAD HITL_CONFLOG
+00:00:00.00> FOVACLOG ON
+00:00:00.00> OPCMDLOG ON
+00:00:00.00> HITLCONFLOG ON
+00:00:00.00> HEARTBEATLOG ON
+00:00:00.00> SAVEIC HITL_4con_run
+00:00:00.00> PAN 52.0 4.5
+00:00:00.00> ZOOM 0.7
+
+# --- Background Traffic ---
+# Eight aircraft, FL240-FL350 - clear of the FL100/150/180/190 used by
+# the four trials below.
+00:00:00.00> CRE BG1, B738, 52.8, 3.3, 090, FL240, 300
+00:00:00.00> CRE BG2, A320, 51.1, 5.6, 270, FL260, 300
+00:00:00.00> CRE BG3, B744, 52.6, 4.9, 180, FL300, 350
+00:00:00.00> CRE BG4, MD11, 51.4, 3.7, 360, FL280, 280
+00:00:00.00> CRE BG5, A319, 51.2, 4.9, 045, FL250, 290
+00:00:00.00> CRE BG6, B772, 52.7, 4.0, 225, FL320, 320
+00:00:00.00> CRE BG7, A333, 51.6, 3.4, 070, FL270, 300
+00:00:00.00> CRE BG8, B789, 52.9, 5.0, 200, FL350, 320
+
+# ==========================================
+# Cluster 1 (t~00:00:45-00:01:05)
+# ==========================================
+
+# Trial 1: Head-On Conflict (180 deg dpsi) @ FL100
+# Meets at (52.0000N, 4.5000E) at t=00:00:45.
+00:00:00.00> CRE TARG1, B738, 52.0000, 4.4154, 090, FL100, 250
+00:00:15.00> CRE INTRUDER1, B738, 52.0000, 4.5564, 270, FL100, 250
+
+# Trial 2: Crossing Conflict (90 deg dpsi) @ FL150
+# Meets at (51.6000N, 5.0000E) at t=00:01:05 - only 20s after trial 1's
+# meeting time, so both are live together for a stretch.
+00:00:25.00> CRE TARG2, A320, 51.5537, 5.0000, 360, FL150, 250
+00:00:25.00> CRE INTRUDER2, A320, 51.6000, 4.9248, 090, FL150, 250
+
+# ==========================================
+# Cluster 2 (t~00:02:00-00:02:20)
+# ==========================================
+
+# Trial 3: Crossing Conflict (90 deg dpsi) @ FL180
+# Meets at (51.9000N, 4.0000E) at t=00:02:00.
+00:01:20.00> CRE TARG3, A319, 51.8759, 3.9323, 060, FL180, 260
+00:01:20.00> CRE INTRUDER3, A319, 51.8583, 4.0391, 330, FL180, 260
+
+# Trial 4: Head-On Conflict (180 deg dpsi) @ FL190
+# Meets at (52.1000N, 4.9000E) at t=00:02:20 - only 20s after trial 3's
+# meeting time. Total runtime (~00:02:20) is deliberately longer than
+# tier 3's but still comfortably under the 3-minute cap - that's saved
+# for tier 5, the hardest one.
+00:01:50.00> CRE TARG4, B738, 52.1000, 4.8436, 090, FL190, 250
+00:01:50.00> CRE INTRUDER4, B738, 52.1000, 4.9564, 270, FL190, 250

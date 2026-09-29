@@ -1,0 +1,40 @@
+# ==========================================
+# HITL Experiment Scenario - Difficulty tier 1/5: EASY
+# One isolated head-on conflict, generous warning, minimal traffic.
+# Intended as an onboarding/practice run before 2con_test.scn.
+# ==========================================
+
+# --- System & Camera Initialization ---
+00:00:00.00> CDMETHOD ON
+00:00:00.00> PLUGIN LOAD HITL_CONFLOG
+# Start all four HITL loggers here, inside the scenario (see
+# scenario/hitl_test/2con_test.scn for why this must happen here rather
+# than typed manually beforehand) - guarantees a fresh file each run.
+00:00:00.00> FOVACLOG ON
+00:00:00.00> OPCMDLOG ON
+00:00:00.00> HITLCONFLOG ON
+00:00:00.00> HEARTBEATLOG ON
+00:00:00.00> SAVEIC HITL_1con_run
+00:00:00.00> PAN 52.0 4.5
+00:00:00.00> ZOOM 0.8
+
+# --- Background Traffic ---
+# Just two aircraft, both well clear (FL220+) of the FL100 conflict
+# below and on the far edges of the view - present so the screen isn't
+# completely empty, but nothing to actually monitor.
+00:00:00.00> CRE BG1, B738, 52.8, 3.5, 090, FL220, 300
+00:00:00.00> CRE BG2, A320, 51.2, 5.5, 270, FL240, 300
+
+# ==========================================
+# Trial: Head-On Conflict (180 deg dpsi) @ FL100
+# ==========================================
+# Both aircraft spawn immediately at t=0 and fly straight at 250 kt,
+# meeting head-on at (52.0000N, 4.5000E) at t=00:01:15 - 75s of warning
+# from spawn, well inside the 300s CD lookahead (DTLOOK, default), and
+# no other traffic to distract from it. Deliberately kept short - this
+# is the easy tier, it shouldn't need the full 3-minute cap that the
+# harder tiers use.
+# Geometry (flat-earth approx at 52N, matching 2con_test.scn's own
+# method): each aircraft covers 250kt*75s = 5.21 NM to close the gap.
+00:00:00.00> CRE TARG1, B738, 52.0000, 4.3590, 090, FL100, 250
+00:00:00.00> CRE INTRUDER1, B738, 52.0000, 4.6410, 270, FL100, 250
