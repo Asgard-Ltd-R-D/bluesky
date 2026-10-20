@@ -1,5 +1,6 @@
 ''' BlueSky OpenGL radar view. '''
 from ctypes import c_float, c_int, Structure
+import time
 import numpy as np
 
 from bluesky.tools import shapes
@@ -20,6 +21,10 @@ from .gltiledmap import TiledMap
 
 # Register settings defaults
 bs.settings.set_variable_defaults(gfx_path='graphics')
+
+# Max interval [s] between PANZOOM updates sent to the sim while a
+# pan/zoom gesture is still in progress (see on_panzoom)
+PANZOOM_LIVE_DT = 0.2
 
 
 class RadarShaders(glh.ShaderSet):
@@ -130,6 +135,7 @@ class RadarWidget(glh.RenderWidget):
         self._wheelidle_timer = QTimer()
         self._wheelidle_timer.setSingleShot(True)
         self._wheelidle_timer.timeout.connect(self._wheel_finished)
+        self._lastpanzoomsend = 0.0
 
     def initializeGL(self):
         """Initialize OpenGL, VBOs, upload data on the GPU, etc."""
@@ -234,15 +240,23 @@ class RadarWidget(glh.RenderWidget):
         self.shaderset.set_wrap(self.wraplon, self.wrapdir)
         self.shaderset.set_pan_and_zoom(self.pan[0], self.pan[1], self.zoom)
 
-        # Send the final view to the sim whenever a pan/zoom change is
-        # actually finished - this covers mouse-drag release (see event()),
-        # a settled mouse-wheel pan/zoom (see _wheel_finished()), and any
-        # instantaneous change such as a typed PAN/ZOOM stack command,
-        # which always arrives here with finished=True.
-        if finished:
-            self._wheelidle_timer.stop()
+        # Send the view to the sim whenever a pan/zoom change is finished -
+        # mouse-drag release (see event()), a settled mouse-wheel pan/zoom
+        # (see _wheel_finished()), or any instantaneous change such as a
+        # typed PAN/ZOOM stack command, which always arrives here with
+        # finished=True. While a gesture is still in progress (e.g. the
+        # mouse button is held down mid-drag), also send it, throttled to
+        # PANZOOM_LIVE_DT, so the sim-side view (HITL_FOVACLOG) never lags
+        # what is on screen by more than that.
+        now = time.monotonic()
+        if finished or now - self._lastpanzoomsend >= PANZOOM_LIVE_DT:
+            if finished:
+                self._wheelidle_timer.stop()
+            self._lastpanzoomsend = now
             bs.net.send(b'PANZOOM', dict(pan=(self.pan[0], self.pan[1]),
-                                         zoom=self.zoom, ar=self.ar, absolute=True))
+                                         zoom=self.zoom, ar=self.ar, absolute=True,
+                                         size=(self.prevwidth, self.prevheight),
+                                         finished=finished))
 
     def _wheel_finished(self):
         ''' Called a short idle period after the last wheel-driven pan/zoom

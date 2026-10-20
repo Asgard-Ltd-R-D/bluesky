@@ -30,8 +30,9 @@
 
     For the second group, this plugin also subscribes to the 'PANZOOM'
     network broadcast (bluesky/ui/qtgl/radarwidget.py) and logs a
-    synthesized "VIEWCHANGE PAN ... ZOOM ..." row whenever the tracked
-    view changes - see _on_panzoom below. This is a RECONSTRUCTED view
+    synthesized "VIEWCHANGE PAN ... ZOOM ..." row whenever a view change
+    is finished (not for the in-progress updates sent mid-drag) - see
+    _on_panzoom below. This is a RECONSTRUCTED view
     state, not the literal text the operator typed (a raw broadcast
     doesn't distinguish "typed PAN" from "typed ZOOM" from a mouse
     drag), and is subject to the same best-effort limitations as
@@ -141,7 +142,11 @@ def _patch_stack_command_logging():
 # instead of literal command text.
 # ---------------------------------------------------------------------
 @subscriber(topic='PANZOOM')
-def _on_panzoom(pan=None, zoom=None, ar=None, absolute=True):
+def _on_panzoom(pan=None, zoom=None, ar=None, absolute=True, size=None, finished=True):
+    # The client also sends in-progress updates mid-gesture (for
+    # HITL_FOVACLOG); only log the view the operator settled on.
+    if not finished:
+        return
     try:
         if cmdlog is not None and cmdlog.isopen() and pan is not None and zoom is not None:
             sender = ctx.sender_id.hex() if ctx.sender_id else ''

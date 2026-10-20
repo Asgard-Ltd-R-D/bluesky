@@ -5,9 +5,10 @@
     Start with:  FOVACLOG ON
 
     Every update_interval seconds (default 1s), logs only the aircraft
-    that are currently inside the operator's radar-screen view, timestamped
-    on the simulation clock (bs.sim.simt) for alignment with an external
-    screen recording and separately collected EEG data.
+    that are currently visible in the operator's radar-screen view,
+    timestamped on the simulation clock (bs.sim.simt) for alignment with
+    the screen recording (HITL_SCREENREC) and separately collected EEG
+    data.
 
     IMPORTANT: turn FOVACLOG ON only *after* a scenario is already loaded
     (either from inside the .scn itself, or interactively once aircraft
@@ -16,34 +17,30 @@
     drops all further rows.
 
     -----------------------------------------------------------------------
-    IMPORTANT LIMITATION - verified directly against this BlueSky checkout
-    (bluesky/ui/qtgl/radarwidget.py, bluesky/ui/qtgl/mainwindow.py,
-    bluesky/simulation/screenio.py):
+    HOW THE VIEW IS TRACKED
 
-    BlueSky is client-server. The simulation process has NO live access to
-    the operator's pan/zoom/range - that state exists only inside the Qt
-    RadarWidget on the *client* side. The sim-side bs.scr object
-    (ScreenIO) only has unused, never-updated def_pan/def_zoom attributes.
-    Typed PAN/ZOOM console commands are registered and executed entirely
-    client-side and are never forwarded to the sim - there is no way for a
-    sim-side plugin to see them.
+    BlueSky is client-server: the pan/zoom state lives only in the Qt
+    RadarWidget on the *client* side (bluesky/ui/qtgl/radarwidget.py).
+    The client sends it to the sim as a 'PANZOOM' broadcast, which this
+    plugin subscribes to:
+      - after every finished view change (mouse-drag release, a settled
+        mouse wheel, typed PAN/ZOOM, window resize), and
+      - while a drag/wheel/pinch gesture is still in progress, at most
+        every 0.2 s (PANZOOM_LIVE_DT in radarwidget.py).
+    So the tracked view lags the screen by at most ~0.2 s.
 
-    The one thing that *does* cross the network is a 'PANZOOM' broadcast
-    the client sends whenever a mouse-drag/touch pan or pinch-zoom gesture
-    *finishes*. This plugin subscribes to that broadcast and uses it as a
-    best-effort estimate of the current view. Consequences:
-      - A zoom done purely with the mouse scroll wheel, with no click
-        afterwards, will NOT update the tracked view.
-      - Typed PAN/ZOOM commands will NOT update the tracked view.
-      - Before the very first such gesture, the plugin falls back to
-        BlueSky's own default startup view (PAN <start_location>, ZOOM 0.4).
+    WHAT COUNTS AS VISIBLE
 
-    If you need FOV tracking that is 100% accurate for every possible way
-    of changing the view, the Qt client itself (bluesky/ui/qtgl) would need
-    to be modified to broadcast on every view change - that is outside
-    what a sim-side plugin can do. This best-effort approach is the
-    simplest option that is still technically correct for the common case
-    (mouse drag-pan / pinch/click-zoom).
+    An aircraft is drawn as a symbol at its position with a 3-line label
+    (callsign / FL / speed) to the right of and below the symbol. An
+    aircraft just off the left or top edge of the screen therefore still
+    shows its label. Each logged row says which:
+      - SYMBOL: the aircraft position itself is inside the view
+      - LABEL:  the position is just outside, but its label (or part of
+                the symbol) is on screen
+    The label size is an estimate in screen pixels (LABEL_W/LABEL_H
+    below, matching text_size=13, ac_size=16 in settings.cfg); a client
+    that doesn't send its pixel size gets no LABEL margin.
     -----------------------------------------------------------------------
 """
 import numpy as np
@@ -53,15 +50,23 @@ from bluesky.tools import datalog
 from bluesky.tools.aero import ft, kts, fpm
 from bluesky.network.subscriber import subscriber
 
+# Screen-pixel extent of an aircraft's symbol + label around its position
+# (see bluesky/ui/qtgl/gltraffic.py: label of 8x3 chars of text_size,
+# offset (ac_size, -0.5 * ac_size) from the symbol)
+SYMBOL_HALF = 10    # half symbol size, all directions
+LABEL_W = 130       # label reaches this far right of the position
+LABEL_H = 75        # label reaches this far below the position
+
 fovheader = \
     '#######################################################\n' + \
     'FOVACLOG\n' + \
     'Aircraft currently visible in the operator radar view\n' + \
-    '(best-effort view tracking - see plugin docstring for limitations)\n' + \
+    '(see plugin docstring for how the view is tracked)\n' + \
     '#######################################################\n\n' + \
     'Parameters [Units]:\n' + \
     'Simulation time [s], ' + \
     'Call sign [-], ' + \
+    'Visible part [SYMBOL/LABEL], ' + \
     'Latitude [deg], ' + \
     'Longitude [deg], ' + \
     'Altitude [ft], ' + \
@@ -97,14 +102,25 @@ def update():
         if not fovlog.isopen() or bs.traf.ntraf == 0:
             return
 
-        south, west, north, east = viewtracker.get_bounds()
         lat, lon = bs.traf.lat, bs.traf.lon
-        inview = (lat >= south) & (lat <= north) & (lon >= west) & (lon <= east)
+        south, west, north, east = viewtracker.get_bounds()
+        insymbol = (lat >= south) & (lat <= north) & (lon >= west) & (lon <= east)
+
+        # Expand the view by the symbol/label extent: the label sits to the
+        # right of and below the position, so it can still be on screen
+        # when the position is just past the left or top edge.
+        dlat_px, dlon_px = viewtracker.deg_per_px()
+        inlabel = (lat >= south - SYMBOL_HALF * dlat_px) & \
+                  (lat <= north + LABEL_H * dlat_px) & \
+                  (lon >= west - LABEL_W * dlon_px) & \
+                  (lon <= east + SYMBOL_HALF * dlon_px)
+        inview = insymbol | inlabel
         if not np.any(inview):
             return
 
         fovlog.log(
             np.array(bs.traf.id)[inview],
+            np.where(insymbol, 'SYMBOL', 'LABEL')[inview],
             lat[inview],
             lon[inview],
             bs.traf.alt[inview] / ft,
@@ -126,21 +142,19 @@ def reset():
 
 
 class ViewTracker:
-    """ Best-effort tracker of the operator's radar view (pan/zoom/ar),
+    """ Tracker of the operator's radar view (pan/zoom/ar/pixel size),
         fed by the client's 'PANZOOM' network broadcast. See the module
-        docstring for exactly which view changes this does and doesn't
-        capture.
+        docstring.
     """
 
     def __init__(self):
-        self.pan = list(self._default_pan())
-        self.zoom = 0.4   # BlueSky's own startup default, bluesky/stack/simstack.py
-        self.ar = 1.0     # Assume a square viewport until told otherwise
+        self.reset()
 
     def reset(self):
         self.pan = list(self._default_pan())
-        self.zoom = 0.4
-        self.ar = 1.0
+        self.zoom = 0.4   # BlueSky's own startup default, bluesky/stack/simstack.py
+        self.ar = 1.0     # Assume a square viewport until told otherwise
+        self.size = None  # Radar widget size in pixels, if the client sent it
 
     @staticmethod
     def _default_pan():
@@ -152,10 +166,10 @@ class ViewTracker:
         except Exception:
             return 52.3086, 4.7639  # EHAM, BlueSky's built-in default
 
-    def on_panzoom(self, pan=None, zoom=None, ar=None, absolute=True):
+    def on_panzoom(self, pan=None, zoom=None, ar=None, size=None):
         """ Handler for the 'PANZOOM' broadcast. The client always sends a
-            full snapshot (pan, zoom, ar), not a delta, so we just replace
-            our stored state - see radarwidget.py:342. """
+            full snapshot (pan, zoom, ar, size), not a delta, so we just
+            replace our stored state. """
         try:
             if pan is not None:
                 self.pan = list(pan)
@@ -163,8 +177,13 @@ class ViewTracker:
                 self.zoom = zoom
             if ar is not None:
                 self.ar = ar
+            if size is not None:
+                self.size = tuple(size)
         except Exception as e:
             print(f'[HITL_FOVACLOG] PANZOOM handling failed: {e}')
+
+    def _flat_earth(self):
+        return np.cos(np.deg2rad(self.pan[0])) or 1e-9
 
     def get_bounds(self):
         """ Same formula as RadarWidget.viewportlatlon() in
@@ -176,17 +195,25 @@ class ViewTracker:
             for, but the view box math would need adjusting for a view
             that straddles +/-180 longitude.
         """
-        flat_earth = np.cos(np.deg2rad(self.pan[0])) or 1e-9
         dlat = 1.0 / (self.zoom * self.ar)
-        dlon = 1.0 / (self.zoom * flat_earth)
+        dlon = 1.0 / (self.zoom * self._flat_earth())
         south = self.pan[0] - dlat
         north = self.pan[0] + dlat
         west = self.pan[1] - dlon
         east = self.pan[1] + dlon
         return south, west, north, east
 
+    def deg_per_px(self):
+        """ Degrees latitude / longitude per screen pixel, or (0, 0) if the
+            client never sent its pixel size. """
+        if not self.size or min(self.size) <= 0:
+            return 0.0, 0.0
+        width, height = self.size
+        return (2.0 / (self.zoom * self.ar) / height,
+                2.0 / (self.zoom * self._flat_earth()) / width)
+
 
 @subscriber(topic='PANZOOM')
-def _on_panzoom(pan=None, zoom=None, ar=None, absolute=True):
+def _on_panzoom(pan=None, zoom=None, ar=None, absolute=True, size=None, finished=True):
     if viewtracker is not None:
-        viewtracker.on_panzoom(pan=pan, zoom=zoom, ar=ar, absolute=absolute)
+        viewtracker.on_panzoom(pan=pan, zoom=zoom, ar=ar, size=size)
