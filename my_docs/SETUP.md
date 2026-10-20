@@ -43,6 +43,19 @@ pip list --outdated
 python BlueSky.py
 ```
 
+## Enable HITL loggers (new machine)
+
+`settings.cfg` is gitignored, so on a fresh clone it is generated from the
+defaults without the HITL loggers. After the first run, edit `settings.cfg`
+in the project root and replace the `enabled_plugins` line with:
+
+```python
+enabled_plugins = ['area', 'datafeed', 'hitl_fovaclog', 'hitl_opcmdlog', 'hitl_heartbeatlog']
+```
+
+Restart BlueSky and check with `PLUGIN LIST`. `HITL_CONFLOG` is not needed
+here — the scenarios in `scenario/hitl_test/` load it with `PLUGIN LOAD HITL_CONFLOG`.
+
 ## Deactivate virtual environment
 
 ```bash
