@@ -22,6 +22,11 @@
 00:00:00.00> OPCMDLOG ON
 00:00:00.00> HITLCONFLOG ON
 00:00:00.00> HEARTBEATLOG ON
+# Record the whole screen to output/SCREENREC_<scn>_<ts>.mp4 from this
+# moment on, plus a SCREENRECLOG CSV mapping simt to video time. Stopped
+# automatically on the next scenario load / quit. See
+# bluesky/plugins/hitl_screenrec.py.
+00:00:00.00> SCREENREC ON
 # Start recording every subsequent stack command (incl. manual resolutions)
 # to a fresh, timestamped, replayable scenario file. For per-command
 # timestamps in CSV form (incl. sender id), see OPCMDLOG instead.

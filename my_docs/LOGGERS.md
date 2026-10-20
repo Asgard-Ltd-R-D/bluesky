@@ -12,6 +12,7 @@ is, why it exists, and how to actually turn the loggers on.
 | `HEARTBEATLOG` | `hitl_heartbeatlog.py` | `HEARTBEATLOG ON` | `HEARTBEATLOG_2con_test_<ts>.log` | One row every simulation second, unconditionally - proves the sim was ticking, independent of every other logger |
 | `OPCMDLOG` | `hitl_opcmdlog.py` | `OPCMDLOG ON` | `OPCMDLOG_2con_test_<ts>.log` | Every stack command that reaches the simulation |
 | `HITLCONFLOG` | `hitl_conflog.py` | `HITLCONFLOG ON` (after `PLUGIN LOAD HITL_CONFLOG`; needs `CDMETHOD ON` first) | `HITLCONFLOG_2con_test_<ts>.log` | Per-pair conflict onset/offset (`CONFSTART`/`CONFEND`), also `ECHO`ed into the SAVEIC recording |
+| `SCREENREC` | `hitl_screenrec.py` | `SCREENREC ON` | `SCREENREC_2con_test_<ts>.mp4` + `SCREENRECLOG_2con_test_<ts>.log` | Video of the whole screen, plus a per-second simt -> video-time / wall-clock sync CSV |
 | `SAVEIC` recording | n/a (built into BlueSky) | `SAVEIC HITL_2con_run` (inside `2con_test.scn`) | `scenario/HITL_2con_run.scn` | Replayable log of every command that *succeeded*, real elapsed-time stamps |
 
 ## The files
@@ -20,7 +21,8 @@ is, why it exists, and how to actually turn the loggers on.
 
 Every second, logs only the aircraft that are currently inside the
 operator's radar-screen view (pan/zoom), not every aircraft in the
-simulation. Columns: simulation time, callsign, lat, lon, altitude,
+simulation. Columns: simulation time, callsign, visible part
+(`SYMBOL`/`LABEL`), lat, lon, altitude,
 heading, track, CAS, vertical speed.
 
 **Why it exists:** so the recorded aircraft data reflects what the
@@ -31,13 +33,17 @@ alignment with a screen recording and EEG data.
 abbreviation used throughout BlueSky's own code, e.g. `DEL acid`) +
 `LOG`. "The aircraft-in-view log."
 
-**Known limitation:** BlueSky's simulation process has no direct access
-to the operator's screen. This plugin tracks the view on a best-effort
-basis, via a network message the client only sends when a mouse-drag
-pan or a click+drag zoom *finishes*. It will NOT pick up a view change
-made by typing `PAN`/`ZOOM` as text commands, or a zoom done with the
-mouse scroll wheel alone (no click afterwards) - see the comments at
-the top of the plugin file for the full technical explanation.
+**How the view is tracked:** the sim has no direct access to the
+operator's screen, so the client sends its view (`PANZOOM` message)
+after every finished view change (drag release, wheel, typed
+`PAN`/`ZOOM`, window resize) *and* every 0.2 s while a drag is still in
+progress. The logged view therefore lags the screen by at most ~0.2 s.
+
+**Visible part column:** an aircraft is drawn as a symbol with a 3-line
+label to its right and below it, so an aircraft just past the left or
+top edge still shows its label. `SYMBOL` = the aircraft position is on
+screen; `LABEL` = only its label (or part of the symbol) is on screen.
+The label size is a pixel estimate (`LABEL_W`/`LABEL_H` in the plugin).
 
 ### `bluesky/plugins/hitl_conflog.py` -> `HITLCONFLOG`
 
@@ -93,6 +99,32 @@ second is present here but missing from another log, that log's
 silence was legitimate; if it's missing here too, the sim itself
 wasn't ticking (or something has gone badly wrong).
 
+### `bluesky/plugins/hitl_screenrec.py` -> `SCREENREC`
+
+Records the operator's whole screen (desktop, incl. mouse cursor) to
+`output/SCREENREC_<scn>_<ts>.mp4`, from the moment `SCREENREC ON` runs
+until the next scenario load, `SCREENREC OFF`, or quit. The capture is
+done by a separate ffmpeg process (Windows `gdigrab`, 15 fps by
+default - `screenrec_fps` in `settings.cfg`), so it doesn't slow the
+sim down. ffmpeg comes from the `imageio-ffmpeg` pip package
+(`pip install imageio-ffmpeg`, see `SETUP.md`).
+
+Alongside the video it writes a `SCREENRECLOG_<scn>_<ts>.log` CSV, one
+row per simulation second: `simt`, the matching time into the video
+[s], and the wall-clock unix time. This is how you map any `simt` from
+the other logs to a point in the video (and, via the wall-clock
+column, to the EEG) - the two clocks drift apart whenever the sim is
+paused (`HOLD`) or fast-forwarded. ffmpeg's own warnings/errors go to
+`SCREENREC_<scn>_<ts>.ffmpeg.txt`; if ffmpeg dies mid-run, an `ECHO`
+says so on screen.
+
+**Why it exists:** to see what the operator actually saw and did,
+frame by frame, on the same timeline as the logs and EEG.
+
+**Limitation:** the sim process does the capturing, so it only works
+when the sim runs on the same machine as the operator's screen (the
+normal `python BlueSky.py` setup, not a remote `--headless` server).
+
 ### `scenario/hitl_test/2con_test.scn`
 
 The actual experiment scenario: two conflict trials (a head-on and a
@@ -134,7 +166,12 @@ four starts writing on its own - each needs its own `... ON`, and
 00:00:00.00> OPCMDLOG ON
 00:00:00.00> HITLCONFLOG ON
 00:00:00.00> HEARTBEATLOG ON
+00:00:00.00> SCREENREC ON
 ```
+
+`SCREENREC` (also in `enabled_plugins`) follows the same pattern, and
+every one of the 5 scenarios in `scenario/hitl_test/` turns it on right
+after the four loggers, so each run gets its own fresh video.
 
 Because loading a scenario always resets the simulation first - which
 closes any logger that was already open, and clears HITLCONFLOG's

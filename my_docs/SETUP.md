@@ -25,6 +25,9 @@ pip install -e .
 pip install -e ".[pygame]"
 pip install -e ".[qt6]"
 pip install -e ".[console]"
+
+# needed for the HITL screen recorder (SCREENREC) - bundles an ffmpeg binary
+pip install imageio-ffmpeg
 ```
 
 ## Update dependencies
