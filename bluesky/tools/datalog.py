@@ -22,6 +22,12 @@ periodicloggers = dict()
 # Dict to contain all loggers (also the periodic loggers)
 allloggers = dict()
 
+# Output folder shared by all log files of the current run, so that every
+# log/video of one scenario run ends up together in
+# <log_path>/<scenario>/<YYYYMMDD_HH-MM-SS>/. Picked on the first log file
+# created after a sim reset (i.e. after IC), cleared again on reset.
+rundir = None
+
 
 @command(name='CRELOG')
 def crelogstack(name: 'txt', dt: float = None, header: 'string' = ''):
@@ -59,6 +65,8 @@ def update():
 def reset():
     """ This function closes all logs. It is called when simulation is
     reset and at quit. """
+    global rundir
+    rundir = None
 
     CSVLogger.simt = 0.0
 
@@ -67,13 +75,24 @@ def reset():
         log.reset()
 
 
+def getRunDir():
+    """ Return (and create) the output folder of the current run. """
+    global rundir
+    if rundir is None:
+        timestamp = datetime.now().strftime('%Y%m%d_%H-%M-%S')
+        rundir = bs.resource(settings.log_path) / \
+            (stack.get_scenname() or 'untitled') / timestamp
+    rundir.mkdir(parents=True, exist_ok=True)
+    return rundir
+
+
 def makeLogfileName(logname, prefix: str = ''):
     timestamp = datetime.now().strftime('%Y%m%d_%H-%M-%S')
     if prefix == '' or prefix.lower() == stack.get_scenname().lower():
         fname = "%s_%s_%s.log" % (logname, stack.get_scenname(), timestamp)
     else:
         fname = "%s_%s_%s_%s.log" % (logname, stack.get_scenname(), prefix, timestamp)
-    return bs.resource(settings.log_path) / fname
+    return getRunDir() / fname
 
 
 def col2txt(col, nrows):

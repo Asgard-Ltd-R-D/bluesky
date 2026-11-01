@@ -102,7 +102,7 @@ wasn't ticking (or something has gone badly wrong).
 ### `bluesky/plugins/hitl_screenrec.py` -> `SCREENREC`
 
 Records the operator's whole screen (desktop, incl. mouse cursor) to
-`output/SCREENREC_<scn>_<ts>.mp4`, from the moment `SCREENREC ON` runs
+`output/<scn>/<run>/SCREENREC_<scn>_<ts>.mp4`, from the moment `SCREENREC ON` runs
 until the next scenario load, `SCREENREC OFF`, or quit. The capture is
 done by a separate ffmpeg process (Windows `gdigrab`, 15 fps by
 default - `screenrec_fps` in `settings.cfg`), so it doesn't slow the
@@ -194,7 +194,25 @@ in the same BlueSky session. Things worth knowing:
 
 ## Where the output goes
 
-All four CSVs are written to `output/`, named
+Every scenario run gets its own folder, `output/<scenario>/<run>/`,
+where `<run>` is the wall-clock time (`YYYYMMDD_HH-MM-SS`) the first log
+file of that run was created. All logs, the `.mp4` and its
+`.ffmpeg.txt` of one run land in that same folder, e.g.:
+
+    output/2con_test/20261029_13-54-56/
+        FOVACLOG_2con_test_20261029_13-54-56.log
+        HEARTBEATLOG_2con_test_20261029_13-54-56.log
+        HITLCONFLOG_2con_test_20261029_13-54-56.log
+        OPCMDLOG_2con_test_20261029_13-54-56.log
+        SCREENRECLOG_2con_test_20261029_13-54-57.log
+        SCREENREC_2con_test_20261029_13-54-57.ffmpeg.txt
+        SCREENREC_2con_test_20261029_13-54-57.mp4
+
+A new run folder is started on every sim reset (i.e. every `IC` /
+scenario load); this is handled once for all loggers in
+`bluesky/tools/datalog.py` (`getRunDir`).
+
+Inside the run folder the CSVs are named
 `FOVACLOG_2con_test_<timestamp>.log`, `HEARTBEATLOG_2con_test_<timestamp>.log`,
 `OPCMDLOG_2con_test_<timestamp>.log` and `HITLCONFLOG_2con_test_<timestamp>.log`
 (the scenario's own filename, `2con_test`, not `HITL_2con_run` - that

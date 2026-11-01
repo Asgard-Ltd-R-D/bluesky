@@ -94,3 +94,6 @@ ssd.obj
 *-checkpoint.py
 *-checkpoint.ipynb
 .ropeproject/config.py
+
+# Local HITL run scenario
+scenario/HITL_2con_run.scn
