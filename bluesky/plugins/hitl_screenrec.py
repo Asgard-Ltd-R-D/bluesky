@@ -11,6 +11,9 @@
     (pip install imageio-ffmpeg); an ffmpeg on the PATH is used as a
     fallback.
 
+    The video is written into the run's output folder and named only by
+    the run's timestamp: output/<scenario>/<stamp>/<stamp>.mp4.
+
     Next to the video, a SCREENRECLOG CSV is written, one row per
     simulation second: simulation time, the matching time into the video,
     and the wall-clock (unix) time. That is the bridge between the simt
@@ -88,7 +91,8 @@ class HitlScreenrec(Entity):
     @stack.command(name='SCREENREC')
     def screenrec(self, flag: 'onoff' = None):
         ''' SCREENREC ON/OFF: Record the screen to an MP4 file in the
-            output folder, with a SCREENRECLOG CSV to align it to simt. '''
+            run's output folder, named <stamp>.mp4, with a SCREENRECLOG
+            CSV to align it to simt. '''
         if flag is None:
             if self.proc:
                 return True, f'SCREENREC is ON, recording to {self.fname}'
@@ -106,9 +110,8 @@ class HitlScreenrec(Entity):
             return False, 'SCREENREC: ffmpeg not found - run ' + \
                           '"pip install imageio-ffmpeg" in the BlueSky venv'
 
-        self.fname = datalog.makeLogfileName('SCREENREC').with_suffix('.mp4')
-        self.fname.parent.mkdir(parents=True, exist_ok=True)
-        ffmpeglog = open(self.fname.with_suffix('.ffmpeg.txt'), 'w')
+        rundir = datalog.getRunDir()
+        self.fname = rundir / f'{rundir.name}.mp4'
         cmd = [ffmpeg, '-y', '-loglevel', 'warning',
                '-f', 'gdigrab', '-framerate', str(settings.screenrec_fps),
                '-draw_mouse', '1', '-i', 'desktop',
@@ -123,13 +126,11 @@ class HitlScreenrec(Entity):
         try:
             self.proc = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                stderr=ffmpeglog,
+                stderr=subprocess.DEVNULL,
                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except OSError as e:
-            ffmpeglog.close()
             self.proc = None
             return False, f'SCREENREC: could not start ffmpeg: {e}'
-        ffmpeglog.close()
         self.t0 = time.time()
 
         self.logger.start()
@@ -159,8 +160,8 @@ class HitlScreenrec(Entity):
         if self.proc is None:
             return
         if self.proc.poll() is not None:
-            stack.stack(f'ECHO SCREENREC: ffmpeg stopped unexpectedly, '
-                        f'see {self.fname.with_suffix(".ffmpeg.txt").name}')
+            stack.stack(f'ECHO SCREENREC: ffmpeg stopped unexpectedly '
+                        f'(exit code {self.proc.returncode})')
             self.proc = None
             self.logger.reset()
             return
