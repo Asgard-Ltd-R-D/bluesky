@@ -2,7 +2,7 @@
 
 Five scenarios, escalating in difficulty, all living in
 `scenario/hitl_test/`. Each is fully self-contained: it loads the four
-HITL loggers fresh (see `LOGGERS.md`), starts its own `SAVEIC`
+HITL loggers fresh (see `LOGGERS.md`), starts its own screen
 recording, and needs `CDMETHOD ON` (already included) to actually alert
 on the conflicts below. All conflict geometry was computed and then
 independently verified by simulating each aircraft pair forward and
@@ -28,18 +28,17 @@ answer.
 Duration scales with difficulty, all capped at **3 minutes**: the easy
 tier is a short 75s drill, not padded out to the full cap just because
 it's allowed to be that long. Tier 2 (`2con_test.scn`) is the one
-exception - it already has a real recorded HITL run
-(`HITL_2con_run.scn`), so its original timing (ends t=00:03:30, the
+exception - it already has real recorded HITL run data, so its original timing (ends t=00:03:30, the
 only tier over the cap) was left untouched rather than risk breaking
 comparability with that data.
 
-| Tier | File | Conflicts | Background | Peak overlap | Duration | SAVEIC name |
-|---|---|---|---|---|---|---|
-| 1 - Easy | `1con_easy.scn` | 1 | 2 | none | 00:01:15 | `HITL_1con_run` |
-| 2 - Medium | `2con_test.scn` | 2 | 4 | none (sequential) | 00:03:30 | `HITL_2con_run` |
-| 3 - Moderate | `3con_overlap.scn` | 3 | 6 | 2 conflicts at once | 00:01:55 | `HITL_3con_run` |
-| 4 - Hard | `4con_hard.scn` | 4 | 8 | 2 conflicts at once (x2 clusters) | 00:02:20 | `HITL_4con_run` |
-| 5 - Extreme | `5con_extreme.scn` | 5 | 10 | 3 conflicts at once | 00:02:45 | `HITL_5con_run` |
+| Tier | File | Conflicts | Background | Peak overlap | Duration |
+|---|---|---|---|---|---|
+| 1 - Easy | `1con_easy.scn` | 1 | 2 | none | 00:01:15 |
+| 2 - Medium | `2con_test.scn` | 2 | 4 | none (sequential) | 00:03:30 |
+| 3 - Moderate | `3con_overlap.scn` | 3 | 6 | 2 conflicts at once | 00:01:55 |
+| 4 - Hard | `4con_hard.scn` | 4 | 8 | 2 conflicts at once (x2 clusters) | 00:02:20 |
+| 5 - Extreme | `5con_extreme.scn` | 5 | 10 | 3 conflicts at once | 00:02:45 |
 
 ---
 

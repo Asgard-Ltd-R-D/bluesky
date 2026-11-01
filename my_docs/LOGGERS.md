@@ -11,9 +11,8 @@ is, why it exists, and how to actually turn the loggers on.
 | `FOVACLOG` | `hitl_fovaclog.py` | `FOVACLOG ON` | `FOVACLOG_2con_test_<ts>.log` | Aircraft currently in the operator's view - one row per aircraft per second, silent when none are in view |
 | `HEARTBEATLOG` | `hitl_heartbeatlog.py` | `HEARTBEATLOG ON` | `HEARTBEATLOG_2con_test_<ts>.log` | One row every simulation second, unconditionally - proves the sim was ticking, independent of every other logger |
 | `OPCMDLOG` | `hitl_opcmdlog.py` | `OPCMDLOG ON` | `OPCMDLOG_2con_test_<ts>.log` | Every stack command that reaches the simulation |
-| `HITLCONFLOG` | `hitl_conflog.py` | `HITLCONFLOG ON` (after `PLUGIN LOAD HITL_CONFLOG`; needs `CDMETHOD ON` first) | `HITLCONFLOG_2con_test_<ts>.log` | Per-pair conflict onset/offset (`CONFSTART`/`CONFEND`), also `ECHO`ed into the SAVEIC recording |
+| `HITLCONFLOG` | `hitl_conflog.py` | `HITLCONFLOG ON` (after `PLUGIN LOAD HITL_CONFLOG`; needs `CDMETHOD ON` first) | `HITLCONFLOG_2con_test_<ts>.log` | Per-pair conflict onset/offset (`CONFSTART`/`CONFEND`), also `ECHO`ed on screen |
 | `SCREENREC` | `hitl_screenrec.py` | `SCREENREC ON` | `<stamp>.mp4` + `SCREENRECLOG_2con_test_<ts>.log` | Video of the whole screen, plus a per-second simt -> video-time / wall-clock sync CSV |
-| `SAVEIC` recording | n/a (built into BlueSky) | `SAVEIC HITL_2con_run` (inside `2con_test.scn`) | `scenario/HITL_2con_run.scn` | Replayable log of every command that *succeeded*, real elapsed-time stamps |
 
 ## The files
 
@@ -49,9 +48,8 @@ The label size is a pixel estimate (`LABEL_W`/`LABEL_H` in the plugin).
 
 Logs the exact simulation time each aircraft pair enters and leaves a
 predicted conflict (`CONFSTART`/`CONFEND`), both as a row in its own
-CSV and as an `ECHO` stack command - so if `SAVEIC` is running, the
-same events land in the replay file too, timestamped right alongside
-the operator's manual resolution commands.
+CSV and as an `ECHO` stack command, so the events also show up on
+screen as they happen.
 
 **Why it exists:** to see, on the same `simt` clock as the other logs,
 exactly when a conflict started/ended versus when (and how fast) the
@@ -130,21 +128,13 @@ normal `python BlueSky.py` setup, not a remote `--headless` server).
 The actual experiment scenario: two conflict trials (a head-on and a
 crossing conflict) plus background traffic. This is the file that
 loads `HITL_CONFLOG` and **turns all four loggers on** (see "How to
-start logging" below) and also runs `SAVEIC HITL_2con_run`, so a
-single scenario run produces all five outputs described here, every
-one of them starting fresh.
+start logging" below) plus `SCREENREC`, so a single scenario run
+produces all the outputs described here, every one of them starting
+fresh.
 
-### `scenario/HITL_2con_run.scn`
-
-Not something you write by hand - it's the output of the
-`SAVEIC HITL_2con_run` line inside `2con_test.scn`. `SAVEIC` is
-BlueSky's own built-in recorder: while it's running, every command that
-*successfully* executes in the simulation gets written here, in
-replayable `.scn` format (with real elapsed-time timestamps), so you
-can literally re-run this exact file later (`IC HITL_2con_run`) to
-reproduce the session. Unlike `OPCMDLOG`, it only records commands that
-succeeded (no failed/mistyped ones), and it's a scenario file, not a
-CSV, so it's better for replaying a run than for data analysis.
+The scenarios no longer run BlueSky's built-in `SAVEIC` recorder, so
+no `scenario/HITL_<n>con_run.scn` replay file is written per run.
+`OPCMDLOG` already captures every operator command with its `simt`.
 
 ## How to start logging
 
@@ -214,9 +204,7 @@ scenario load); this is handled once for all loggers in
 Inside the run folder the CSVs are named
 `FOVACLOG_2con_test_<timestamp>.log`, `HEARTBEATLOG_2con_test_<timestamp>.log`,
 `OPCMDLOG_2con_test_<timestamp>.log` and `HITLCONFLOG_2con_test_<timestamp>.log`
-(the scenario's own filename, `2con_test`, not `HITL_2con_run` - that
-name belongs only to the `SAVEIC` replay file in `scenario/`). Note
-each file's `<timestamp>` is its own *wall-clock* creation time, so
-filenames can differ by a second between them - it's cosmetic, all
-four use `simt` as their first column, so they line up with each other
-and with `HITL_2con_run.scn`'s own timestamps.
+(the scenario's own filename, `2con_test`). Note each file's
+`<timestamp>` is its own *wall-clock* creation time, so filenames can
+differ by a second between them - it's cosmetic, all four use `simt`
+as their first column, so they line up with each other.

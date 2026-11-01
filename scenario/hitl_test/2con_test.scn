@@ -27,10 +27,6 @@
 # automatically on the next scenario load / quit. See
 # bluesky/plugins/hitl_screenrec.py.
 00:00:00.00> SCREENREC ON
-# Start recording every subsequent stack command (incl. manual resolutions)
-# to a fresh, timestamped, replayable scenario file. For per-command
-# timestamps in CSV form (incl. sender id), see OPCMDLOG instead.
-00:00:00.00> SAVEIC HITL_2con_run
 # Center radar screen on a specific location (lat, lon)
 00:00:00.00> PAN 52.0 4.5
 # Set initial zoom level to fit the experiment area

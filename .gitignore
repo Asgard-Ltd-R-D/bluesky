@@ -96,4 +96,4 @@ ssd.obj
 .ropeproject/config.py
 
 # Local HITL run scenario
-scenario/HITL_2con_run.scn
+scenario/HITL_*_run.scn
