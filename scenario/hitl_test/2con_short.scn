@@ -1,0 +1,55 @@
+# ==========================================
+# HITL Experiment Scenario - Baseline & Conflicts (SHORT)
+# Same two trials as 2con_test.scn (head-on @ FL100, then 90 deg crossing
+# @ FL150), compressed so both conflicts happen early and the whole run
+# fits in a shorter video (ends t=00:02:15 instead of t=00:03:30).
+# Manual collision geometry (CRECONFS avoided - see 2con_test.scn).
+# ==========================================
+
+# --- System & Camera Initialization ---
+# Enable Conflict Detection (crucial for visual alerts on the radar)
+00:00:00.00> CDMETHOD ON
+# Load the conflict onset/offset logger (see bluesky/plugins/hitl_conflog.py).
+00:00:00.00> PLUGIN LOAD HITL_CONFLOG
+# Start all four HITL loggers inside the scenario so every run starts
+# fresh files (a scenario load resets the sim and closes open loggers).
+00:00:00.00> FOVACLOG ON
+00:00:00.00> OPCMDLOG ON
+00:00:00.00> HITLCONFLOG ON
+00:00:00.00> HEARTBEATLOG ON
+# Record the whole screen to output/<scn>/<stamp>/<stamp>.mp4, plus a
+# SCREENRECLOG CSV mapping simt to video time. See
+# bluesky/plugins/hitl_screenrec.py.
+00:00:00.00> SCREENREC ON
+# Center radar screen on a specific location (lat, lon)
+00:00:00.00> PAN 52.0 4.5
+# Set initial zoom level to fit the experiment area
+00:00:00.00> ZOOM 0.8
+
+# --- Background Traffic (Baseline) ---
+# Same as 2con_test.scn: FL180-FL300, clear of the FL100/FL150 conflicts.
+00:00:00.00> CRE BG1, B738, 52.8, 3.5, 090, FL200, 300
+00:00:00.00> CRE BG2, A320, 51.2, 5.5, 270, FL220, 300
+00:00:00.00> CRE BG3, B744, 52.5, 4.8, 180, FL300, 350
+00:00:00.00> CRE BG4, MD11, 51.5, 3.8, 360, FL180, 280
+
+# ==========================================
+# Trial 1: Head-On Conflict (180 deg, dpsi) @ FL100
+# ==========================================
+# Both spawned at t=0, each 250kt*60s = 4.17 NM (0.1128 deg lon at 52N)
+# from the meeting point 52.0000N 3.6000E, which they reach together at
+# t=00:01:00. Initial separation 8.33 NM, so it alerts at once but is
+# not yet a loss of separation.
+00:00:00.00> CRE TARG1, B738, 52.0000, 3.4872, 090, FL100, 250
+00:00:00.00> CRE INTRUDER1, B738, 52.0000, 3.7128, 270, FL100, 250
+
+# ==========================================
+# Trial 2: Crossing Conflict (90 deg, dpsi) @ FL150
+# ==========================================
+# TARG2 flies due north (360), INTRUDER2 due east (090), both at 250 kt.
+# Spawned at t=00:01:00 (as trial 1 meets) and each placed 250kt*75s =
+# 5.21 NM from the shared meeting point (51.6042N 5.0000E), so they cross
+# at a right angle at t=00:02:15, same altitude (FL150). Initial
+# separation 7.37 NM.
+00:01:00.00> CRE TARG2, A320, 51.5174, 5.0000, 360, FL150, 250
+00:01:00.00> CRE INTRUDER2, A320, 51.6042, 4.8602, 090, FL150, 250

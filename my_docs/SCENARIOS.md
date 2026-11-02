@@ -36,6 +36,7 @@ comparability with that data.
 |---|---|---|---|---|---|
 | 1 - Easy | `1con_easy.scn` | 1 | 2 | none | 00:01:15 |
 | 2 - Medium | `2con_test.scn` | 2 | 4 | none (sequential) | 00:03:30 |
+| 2 - Medium (short) | `2con_short.scn` | 2 | 4 | none (sequential) | 00:02:15 |
 | 3 - Moderate | `3con_overlap.scn` | 3 | 6 | 2 conflicts at once | 00:01:55 |
 | 4 - Hard | `4con_hard.scn` | 4 | 8 | 2 conflicts at once (x2 clusters) | 00:02:20 |
 | 5 - Extreme | `5con_extreme.scn` | 5 | 10 | 3 conflicts at once | 00:02:45 |
@@ -69,6 +70,24 @@ Two sequential trials, never overlapping - the original scenario.
 **Expected commands (one valid solution):**
 1. `HDG INTRUDER1 300` (or `ALT INTRUDER1 FL120`) - by ~t=00:01:00.
 2. `ALT INTRUDER2 FL170` (or `HDG INTRUDER2 045`) - by ~t=00:03:00.
+
+---
+
+## Tier 2 (short) - `2con_short.scn`
+
+Same two trials and background traffic as `2con_test.scn`, compressed
+so both conflicts happen early and fit a shorter recording.
+
+| Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
+|---|---|---|---|---|---|---|
+| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:00 (both) | t=00:01:00 | 180 deg |
+| 2 | TARG2 / INTRUDER2 | FL150 | Crossing | t=00:01:00 (both) | t=00:02:15 | 90 deg |
+
+**Expected commands (one valid solution):**
+1. `HDG INTRUDER1 300` (or `ALT INTRUDER1 FL120`) - by ~t=00:00:20
+   (5 NM loss of separation at ~t=00:00:24).
+2. `ALT INTRUDER2 FL170` (or `HDG INTRUDER2 045`) - by ~t=00:01:20
+   (5 NM loss of separation at ~t=00:01:24).
 
 ---
 
