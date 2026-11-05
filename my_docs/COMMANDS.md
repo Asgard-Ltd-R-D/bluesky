@@ -46,31 +46,31 @@ unit. Commands are typed in the console, or placed in a `.scn` file as
 
 | Command | Aliases | Does | Example |
 |---|---|---|---|
-| `ALT acid,alt,[vspd]` | | Altitude command | `ALT INTRUDER1 FL120` - climb/descend to FL120, autopilot-selected rate |
-| `VS acid,vspd` | | Vertical speed (ft/min) | `VS INTRUDER1 1500` - climb/descend at 1500 ft/min |
-| `HDG acid,hdg` | `HEADING`, `TURN` | Heading command (deg, True or Magnetic) | `HDG INTRUDER1 300` - turn to heading 300 |
-| `SPD acid,spd` | `SPEED` | CAS (kts) or Mach if `<1` | `SPD TARG2 220` - slow to 220 kt CAS |
-| `DEST acid,latlon/airport` | | Set destination | `DEST TARG1 EHAM` - route to Schiphol |
-| `ORIG acid,latlon/airport` | | Set origin airport | `ORIG TARG1 EHAM` - set origin to Schiphol |
-| `VNAV acid,[ON/OFF]` | | Vertical FMS mode | `VNAV TARG1 ON` - let the FMS manage climb/descent per the route |
-| `LNAV acid,[ON/OFF]` | | Lateral FMS mode (follow route) | `LNAV TARG1 ON` - follow the programmed route instead of a fixed heading |
-| `DIRECT acid,wpname` | `DIRECTTO`, `DIRTO`, `DCT` | Go direct to a route waypoint | `DIRECT TARG1 EH007` - cut straight to waypoint EH007 |
-| `ADDWPT acid,(wpname/lat,lon),[alt,spd,after,before]` | `WPTYPE` | Add a route waypoint | `ADDWPT TARG1 52.2,4.0,FL100,250` - add a waypoint with alt/speed constraints |
-| `AFTER acid,wpinroute ADDWPT ...` | | Insert a waypoint after another one in the route | `AFTER TARG1 EH007 ADDWPT 52.3,4.2` - insert a new fix right after EH007 |
-| `BEFORE acid,wpinroute ADDWPT ...` | | Insert a waypoint before another one | `BEFORE TARG1 EH007 ADDWPT 52.1,3.9` - insert a new fix right before EH007 |
-| `AT acid,wpinroute [DEL] SPD/ALT [val]` | | Edit/clear a speed or altitude constraint at a waypoint | `AT TARG1 EH007 ALT FL80` - constrain altitude at EH007 to FL80 |
-| `RTA acid,wpname,time` | | Required time of arrival at a waypoint | `RTA TARG1 EH007 00:05:00` - be at EH007 at exactly t=5:00 |
-| `LISTRTE acid,[pagenr]` | | List an aircraft's route | `LISTRTE TARG1` - print TARG1's full route |
-| `DELWPT acid,wpname` | `DELWP` | Delete one waypoint from a route | `DELWPT TARG1 EH007` - remove that one waypoint |
-| `DELRTE acid` | `DELROUTE` | Delete the entire route | `DELRTE TARG1` - clear TARG1's route entirely |
-| `DUMPRTE acid` | | Write the route to `output/routelog.txt` | `DUMPRTE TARG1` |
-| `ATALT acid,alt,cmd` | | Run `cmd` once the aircraft reaches `alt` | `ATALT TARG1 FL150 SPD TARG1 280` - speed up once level at FL150 |
-| `ATSPD acid,spd,cmd` | | Run `cmd` once the aircraft reaches `spd` | `ATSPD TARG1 250 HDG TARG1 090` - turn once slowed to 250 kt |
-| `ATDIST acid,pos,dist,cmd` | | Run `cmd` once within `dist` nm of `pos` | `ATDIST TARG1 EHAM 20 ALT TARG1 FL50` - start descent 20 nm from EHAM |
-| `SWTOC acid,[ON/OFF]` / `SWTOD acid,[ON/OFF]` | | Top-of-climb / top-of-descent automation switches | `SWTOD TARG1 OFF` - disable automatic top-of-descent |
-| `THR acid,IDLE/0.0-1.0/AUTO` | | Manual throttle override | `THR TARG1 IDLE` - pull throttle to idle |
-| `BANK acid,bankangle` | | Bank-angle limit | `BANK TARG1 20` - limit turns to 20 deg of bank |
-| `CRUISESPD acid,spd` | | Set cruise speed used by the autopilot | `CRUISESPD TARG1 280` |
+| `ALT acid,alt,[vspd]` | | Altitude command | `ALT INTRUDA FL120` - climb/descend to FL120, autopilot-selected rate |
+| `VS acid,vspd` | | Vertical speed (ft/min) | `VS INTRUDA 1500` - climb/descend at 1500 ft/min |
+| `HDG acid,hdg` | `HEADING`, `TURN` | Heading command (deg, True or Magnetic) | `HDG INTRUDA 300` - turn to heading 300 |
+| `SPD acid,spd` | `SPEED` | CAS (kts) or Mach if `<1` | `SPD TARGB 220` - slow to 220 kt CAS |
+| `DEST acid,latlon/airport` | | Set destination | `DEST TARGA EHAM` - route to Schiphol |
+| `ORIG acid,latlon/airport` | | Set origin airport | `ORIG TARGA EHAM` - set origin to Schiphol |
+| `VNAV acid,[ON/OFF]` | | Vertical FMS mode | `VNAV TARGA ON` - let the FMS manage climb/descent per the route |
+| `LNAV acid,[ON/OFF]` | | Lateral FMS mode (follow route) | `LNAV TARGA ON` - follow the programmed route instead of a fixed heading |
+| `DIRECT acid,wpname` | `DIRECTTO`, `DIRTO`, `DCT` | Go direct to a route waypoint | `DIRECT TARGA EH007` - cut straight to waypoint EH007 |
+| `ADDWPT acid,(wpname/lat,lon),[alt,spd,after,before]` | `WPTYPE` | Add a route waypoint | `ADDWPT TARGA 52.2,4.0,FL100,250` - add a waypoint with alt/speed constraints |
+| `AFTER acid,wpinroute ADDWPT ...` | | Insert a waypoint after another one in the route | `AFTER TARGA EH007 ADDWPT 52.3,4.2` - insert a new fix right after EH007 |
+| `BEFORE acid,wpinroute ADDWPT ...` | | Insert a waypoint before another one | `BEFORE TARGA EH007 ADDWPT 52.1,3.9` - insert a new fix right before EH007 |
+| `AT acid,wpinroute [DEL] SPD/ALT [val]` | | Edit/clear a speed or altitude constraint at a waypoint | `AT TARGA EH007 ALT FL80` - constrain altitude at EH007 to FL80 |
+| `RTA acid,wpname,time` | | Required time of arrival at a waypoint | `RTA TARGA EH007 00:05:00` - be at EH007 at exactly t=5:00 |
+| `LISTRTE acid,[pagenr]` | | List an aircraft's route | `LISTRTE TARGA` - print TARGA's full route |
+| `DELWPT acid,wpname` | `DELWP` | Delete one waypoint from a route | `DELWPT TARGA EH007` - remove that one waypoint |
+| `DELRTE acid` | `DELROUTE` | Delete the entire route | `DELRTE TARGA` - clear TARGA's route entirely |
+| `DUMPRTE acid` | | Write the route to `output/routelog.txt` | `DUMPRTE TARGA` |
+| `ATALT acid,alt,cmd` | | Run `cmd` once the aircraft reaches `alt` | `ATALT TARGA FL150 SPD TARGA 280` - speed up once level at FL150 |
+| `ATSPD acid,spd,cmd` | | Run `cmd` once the aircraft reaches `spd` | `ATSPD TARGA 250 HDG TARGA 090` - turn once slowed to 250 kt |
+| `ATDIST acid,pos,dist,cmd` | | Run `cmd` once within `dist` nm of `pos` | `ATDIST TARGA EHAM 20 ALT TARGA FL50` - start descent 20 nm from EHAM |
+| `SWTOC acid,[ON/OFF]` / `SWTOD acid,[ON/OFF]` | | Top-of-climb / top-of-descent automation switches | `SWTOD TARGA OFF` - disable automatic top-of-descent |
+| `THR acid,IDLE/0.0-1.0/AUTO` | | Manual throttle override | `THR TARGA IDLE` - pull throttle to idle |
+| `BANK acid,bankangle` | | Bank-angle limit | `BANK TARGA 20` - limit turns to 20 deg of bank |
+| `CRUISESPD acid,spd` | | Set cruise speed used by the autopilot | `CRUISESPD TARGA 280` |
 | `NOM acid` | | Reset aircraft to nominal performance |
 | `CASMACHTHR threshold` | | Threshold below which a speed value is read as Mach |
 

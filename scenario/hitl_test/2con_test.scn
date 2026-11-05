@@ -36,31 +36,31 @@
 # Injected immediately to create a realistic but manageable workload.
 # These aircraft cruise at FL180-FL300, clear of the FL100/FL150 conflict
 # geometry below, so they never trigger spurious alerts.
-00:00:00.00> CRE BG1, B738, 52.8, 3.5, 090, FL200, 300
-00:00:00.00> CRE BG2, A320, 51.2, 5.5, 270, FL220, 300
-00:00:00.00> CRE BG3, B744, 52.5, 4.8, 180, FL300, 350
-00:00:00.00> CRE BG4, MD11, 51.5, 3.8, 360, FL180, 280
+00:00:00.00> CRE BGA, B738, 52.8, 3.5, 090, FL200, 300
+00:00:00.00> CRE BGB, A320, 51.2, 5.5, 270, FL220, 300
+00:00:00.00> CRE BGC, B744, 52.5, 4.8, 180, FL300, 350
+00:00:00.00> CRE BGD, MD11, 51.5, 3.8, 360, FL180, 280
 
 # ==========================================
 # Trial 1: Head-On Conflict (180 deg, dpsi) @ FL100
 # ==========================================
-# TARG1 flies due east (090) at 250 kt from t=00:00:05.
-00:00:05.00> CRE TARG1, B738, 52.0000, 3.5000, 090, FL100, 250
+# TARGA flies due east (090) at 250 kt from t=00:00:05.
+00:00:05.00> CRE TARGA, B738, 52.0000, 3.5000, 090, FL100, 250
 
-# INTRUDER1 is placed manually so that, flying due west (270) at 250 kt,
-# it meets TARG1 head-on exactly 60s later (both arrive at ~52.0000N 3.6598E
+# INTRUDA is placed manually so that, flying due west (270) at 250 kt,
+# it meets TARGA head-on exactly 60s later (both arrive at ~52.0000N 3.6598E
 # at simulation t=00:01:30). Geometry (great-circle, small-angle approx at
-# 52N): TARG1 covers 250kt*85s = 5.90 NM east of its t=5s spawn point by
-# t=90s; INTRUDER1 is spawned 250kt*60s = 4.17 NM further east of that
+# 52N): TARGA covers 250kt*85s = 5.90 NM east of its t=5s spawn point by
+# t=90s; INTRUDA is spawned 250kt*60s = 4.17 NM further east of that
 # meeting point so it closes the gap in exactly 60s.
-00:00:30.00> CRE INTRUDER1, B738, 52.0000, 3.7725, 270, FL100, 250
+00:00:30.00> CRE INTRUDA, B738, 52.0000, 3.7725, 270, FL100, 250
 
 # ==========================================
 # Trial 2: Crossing Conflict (90 deg, dpsi) @ FL150
 # ==========================================
-# TARG2 flies due north (360) at 250 kt, INTRUDER2 flies due east (090) at
+# TARGB flies due north (360) at 250 kt, INTRUDB flies due east (090) at
 # 250 kt. Both spawned at t=00:02:00 and both placed 250kt*90s = 6.25 NM
 # from the shared meeting point (51.6042N 5.0000E), so they cross paths
 # at a right angle exactly 90s later, at t=00:03:30, same altitude (FL150).
-00:02:00.00> CRE TARG2, A320, 51.5000, 5.0000, 360, FL150, 250
-00:02:00.00> CRE INTRUDER2, A320, 51.6042, 4.8323, 090, FL150, 250
+00:02:00.00> CRE TARGB, A320, 51.5000, 5.0000, 360, FL150, 250
+00:02:00.00> CRE INTRUDB, A320, 51.6042, 4.8323, 090, FL150, 250

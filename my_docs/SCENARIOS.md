@@ -50,10 +50,10 @@ to look at.
 
 | Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
 |---|---|---|---|---|---|---|
-| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:00 (both) | t=00:01:15 | 180 deg |
+| 1 | TARGA / INTRUDA | FL100 | Head-on | t=00:00:00 (both) | t=00:01:15 | 180 deg |
 
 **Expected commands (one valid solution):**
-1. `HDG INTRUDER1 300` (or `ALT INTRUDER1 FL120`) - issue any time
+1. `HDG INTRUDA 300` (or `ALT INTRUDA FL120`) - issue any time
    before ~t=00:01:00.
 
 ---
@@ -64,12 +64,12 @@ Two sequential trials, never overlapping - the original scenario.
 
 | Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
 |---|---|---|---|---|---|---|
-| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:05 / 00:00:30 | t=00:01:30 | 180 deg |
-| 2 | TARG2 / INTRUDER2 | FL150 | Crossing | t=00:02:00 (both) | t=00:03:30 | 90 deg |
+| 1 | TARGA / INTRUDA | FL100 | Head-on | t=00:00:05 / 00:00:30 | t=00:01:30 | 180 deg |
+| 2 | TARGB / INTRUDB | FL150 | Crossing | t=00:02:00 (both) | t=00:03:30 | 90 deg |
 
 **Expected commands (one valid solution):**
-1. `HDG INTRUDER1 300` (or `ALT INTRUDER1 FL120`) - by ~t=00:01:00.
-2. `ALT INTRUDER2 FL170` (or `HDG INTRUDER2 045`) - by ~t=00:03:00.
+1. `HDG INTRUDA 300` (or `ALT INTRUDA FL120`) - by ~t=00:01:00.
+2. `ALT INTRUDB FL170` (or `HDG INTRUDB 045`) - by ~t=00:03:00.
 
 ---
 
@@ -80,13 +80,13 @@ so both conflicts happen early and fit a shorter recording.
 
 | Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
 |---|---|---|---|---|---|---|
-| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:00 (both) | t=00:01:00 | 180 deg |
-| 2 | TARG2 / INTRUDER2 | FL150 | Crossing | t=00:01:00 (both) | t=00:02:15 | 90 deg |
+| 1 | TARGA / INTRUDA | FL100 | Head-on | t=00:00:00 (both) | t=00:01:00 | 180 deg |
+| 2 | TARGB / INTRUDB | FL150 | Crossing | t=00:01:00 (both) | t=00:02:15 | 90 deg |
 
 **Expected commands (one valid solution):**
-1. `HDG INTRUDER1 300` (or `ALT INTRUDER1 FL120`) - by ~t=00:00:20
+1. `HDG INTRUDA 300` (or `ALT INTRUDA FL120`) - by ~t=00:00:20
    (5 NM loss of separation at ~t=00:00:24).
-2. `ALT INTRUDER2 FL170` (or `HDG INTRUDER2 045`) - by ~t=00:01:20
+2. `ALT INTRUDB FL170` (or `HDG INTRUDB 045`) - by ~t=00:01:20
    (5 NM loss of separation at ~t=00:01:24).
 
 ---
@@ -99,17 +99,17 @@ test.
 
 | Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
 |---|---|---|---|---|---|---|
-| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:00 / 00:00:15 | t=00:00:45 | 180 deg |
-| 2 | TARG2 / INTRUDER2 | FL150 | Crossing | t=00:00:55 (both) | t=00:01:35 | 90 deg |
-| 3 | TARG3 / INTRUDER3 | FL180 | Crossing | t=00:01:15 (both) | t=00:01:55 | 90 deg |
+| 1 | TARGA / INTRUDA | FL100 | Head-on | t=00:00:00 / 00:00:15 | t=00:00:45 | 180 deg |
+| 2 | TARGB / INTRUDB | FL150 | Crossing | t=00:00:55 (both) | t=00:01:35 | 90 deg |
+| 3 | TARGC / INTRUDC | FL180 | Crossing | t=00:01:15 (both) | t=00:01:55 | 90 deg |
 
 Trials 2 and 3 are both live from ~t=00:01:15 to ~t=00:01:35 - resolve
 trial 2 first (it's due sooner), then trial 3.
 
 **Expected commands (one valid solution):**
-1. `HDG INTRUDER1 300` - by ~t=00:00:30.
-2. `ALT INTRUDER2 FL170` - by ~t=00:01:15 (trial 2 is due first).
-3. `ALT INTRUDER3 FL200` - by ~t=00:01:40.
+1. `HDG INTRUDA 300` - by ~t=00:00:30.
+2. `ALT INTRUDB FL170` - by ~t=00:01:15 (trial 2 is due first).
+3. `ALT INTRUDC FL200` - by ~t=00:01:40.
 
 ---
 
@@ -120,17 +120,17 @@ must split attention twice per run instead of once.
 
 | Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
 |---|---|---|---|---|---|---|
-| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:00 / 00:00:15 | t=00:00:45 | 180 deg |
-| 2 | TARG2 / INTRUDER2 | FL150 | Crossing | t=00:00:25 (both) | t=00:01:05 | 90 deg |
-| 3 | TARG3 / INTRUDER3 | FL180 | Crossing | t=00:01:20 (both) | t=00:02:00 | 90 deg |
-| 4 | TARG4 / INTRUDER4 | FL190 | Head-on | t=00:01:50 (both) | t=00:02:20 | 180 deg |
+| 1 | TARGA / INTRUDA | FL100 | Head-on | t=00:00:00 / 00:00:15 | t=00:00:45 | 180 deg |
+| 2 | TARGB / INTRUDB | FL150 | Crossing | t=00:00:25 (both) | t=00:01:05 | 90 deg |
+| 3 | TARGC / INTRUDC | FL180 | Crossing | t=00:01:20 (both) | t=00:02:00 | 90 deg |
+| 4 | TARGD / INTRUDD | FL190 | Head-on | t=00:01:50 (both) | t=00:02:20 | 180 deg |
 
 **Expected commands (one valid solution):**
-1. `HDG INTRUDER1 300` - by ~t=00:00:30 (cluster 1, resolve first - due
+1. `HDG INTRUDA 300` - by ~t=00:00:30 (cluster 1, resolve first - due
    sooner).
-2. `ALT INTRUDER2 FL170` - by ~t=00:00:50.
-3. `ALT INTRUDER3 FL210` - by ~t=00:01:40 (cluster 2).
-4. `HDG INTRUDER4 300` - by ~t=00:02:00.
+2. `ALT INTRUDB FL170` - by ~t=00:00:50.
+3. `ALT INTRUDC FL210` - by ~t=00:01:40 (cluster 2).
+4. `HDG INTRUDD 300` - by ~t=00:02:00.
 
 ---
 
@@ -143,11 +143,11 @@ is off.
 
 | Trial | Aircraft | Alt | Type | Spawn | Meets at | dpsi |
 |---|---|---|---|---|---|---|
-| 1 | TARG1 / INTRUDER1 | FL100 | Head-on | t=00:00:00 / 00:00:15 | t=00:00:45 | 180 deg |
-| 2 | TARG2 / INTRUDER2 | FL150 | Crossing | t=00:00:50 (both) | t=00:01:30 | 90 deg |
-| 3 | TARG3 / INTRUDER3 | FL180 | Head-on | t=00:01:00 (both) | t=00:01:40 | 180 deg |
-| 4 | TARG4 / INTRUDER4 | FL200 | Crossing | t=00:01:05 (both) | t=00:01:50 | 120 deg |
-| 5 | TARG5 / INTRUDER5 | FL220 | Crossing | t=00:02:05 (both) | t=00:02:45 | 60 deg |
+| 1 | TARGA / INTRUDA | FL100 | Head-on | t=00:00:00 / 00:00:15 | t=00:00:45 | 180 deg |
+| 2 | TARGB / INTRUDB | FL150 | Crossing | t=00:00:50 (both) | t=00:01:30 | 90 deg |
+| 3 | TARGC / INTRUDC | FL180 | Head-on | t=00:01:00 (both) | t=00:01:40 | 180 deg |
+| 4 | TARGD / INTRUDD | FL200 | Crossing | t=00:01:05 (both) | t=00:01:50 | 120 deg |
+| 5 | TARGE / INTRUDE | FL220 | Crossing | t=00:02:05 (both) | t=00:02:45 | 60 deg |
 
 Trials 2, 3 and 4 are all open at once from roughly t=00:00:50 to
 t=00:01:40 - the hardest single stretch across all five tiers.
@@ -155,11 +155,11 @@ Suggested triage order: whichever meets soonest first (trial 2, due
 t=00:01:30), then trial 3 (t=00:01:40), then trial 4 (t=00:01:50).
 
 **Expected commands (one valid solution):**
-1. `HDG INTRUDER1 300` - by ~t=00:00:30.
-2. `ALT INTRUDER2 FL170` - by ~t=00:01:10 (due soonest in the cluster).
-3. `HDG INTRUDER3 090` - by ~t=00:01:25.
-4. `ALT INTRUDER4 FL230` - by ~t=00:01:40 (FL230 is deliberately not
+1. `HDG INTRUDA 300` - by ~t=00:00:30.
+2. `ALT INTRUDB FL170` - by ~t=00:01:10 (due soonest in the cluster).
+3. `HDG INTRUDC 090` - by ~t=00:01:25.
+4. `ALT INTRUDD FL230` - by ~t=00:01:40 (FL230 is deliberately not
    FL220 - trial 5 below uses FL220, so climbing into it here would
    just trade one conflict for another).
-5. `HDG INTRUDER5 300` - by ~t=00:02:30 (after the cluster - tests
+5. `HDG INTRUDE 300` - by ~t=00:02:30 (after the cluster - tests
    recovery, not triage).
