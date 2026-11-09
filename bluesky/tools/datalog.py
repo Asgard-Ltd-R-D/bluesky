@@ -243,6 +243,8 @@ class CSVLogger:
             return True, text
             # TODO: add list of logging vars
         elif args[0] == 'ON':
+            if self.isopen():
+                return True
             if len(args) > 1:
                 if isinstance(args[1], float):
                     self.dt = args[1]

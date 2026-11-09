@@ -43,7 +43,7 @@ from bluesky import settings, stack
 from bluesky.tools import datalog
 from bluesky.core import Entity, timed_function
 
-settings.set_variable_defaults(screenrec_fps=15)
+settings.set_variable_defaults(screenrec_fps=15, external_capture_enabled=False)
 
 screenrecheader = \
     '#######################################################\n' + \
@@ -97,10 +97,16 @@ class HitlScreenrec(Entity):
         if flag is None:
             if self.proc:
                 return True, f'SCREENREC is ON, recording to {self.fname}'
+            if self.external:
+                return True, 'SCREENREC external synchronization is ON'
             return True, 'SCREENREC is OFF'
         if not flag:
+            if settings.external_capture_enabled:
+                return True, 'SCREENREC is controlled by the external capture coordinator'
             self.stop()
             return True, 'SCREENREC stopped'
+        if settings.external_capture_enabled:
+            return True, 'SCREENREC local video disabled; external capture coordinator owns the video'
         return self.start()
 
     def start(self):
@@ -148,11 +154,13 @@ class HitlScreenrec(Entity):
         by the capture service; until it arrives, the coordinator leaves this
         logger inactive rather than inventing a video timestamp.
         """
-        self.stop()
+        if self.proc is not None:
+            return False, 'SCREENREC local recorder is already active; external capture was not started'
         self.external = True
         self.fname = None
         self.t0 = float(capture_start_epoch) if capture_start_epoch is not None else time.time()
-        self.logger.start()
+        if not self.logger.isopen():
+            self.logger.start()
         self.log_sync()
         return True, 'SCREENREC external synchronization logging enabled'
 

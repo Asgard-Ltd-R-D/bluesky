@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -55,3 +58,49 @@ class RecordingClient:
 
     def finalize(self, run_id: str) -> dict[str, Any]:
         return self.request("POST", f"/api/v1/runs/{run_id}/finalize")
+
+    def download_video(self, run_id: str, destination: Path) -> dict[str, Any]:
+        """Stream the verified remote MP4 to a new local file atomically."""
+        destination = destination.resolve()
+        if destination.exists():
+            raise FileExistsError(f"refusing to overwrite existing video: {destination}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        last: Exception | None = None
+        for attempt in range(self.retries + 1):
+            temporary_name: str | None = None
+            try:
+                request = urllib.request.Request(
+                    self.base_url + f"/api/v1/runs/{run_id}/video",
+                    method="GET",
+                    headers={"Authorization": f"Bearer {self.token}"},
+                )
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    expected = response.headers.get("X-Content-SHA256")
+                    with tempfile.NamedTemporaryFile(
+                        mode="wb", dir=destination.parent, prefix=f".{destination.name}.", suffix=".part", delete=False
+                    ) as temporary:
+                        temporary_name = temporary.name
+                        digest = hashlib.sha256()
+                        size = 0
+                        while True:
+                            chunk = response.read(1024 * 1024)
+                            if not chunk:
+                                break
+                            temporary.write(chunk)
+                            digest.update(chunk)
+                            size += len(chunk)
+                actual = digest.hexdigest()
+                if expected and expected != actual:
+                    raise ValueError(f"download checksum mismatch: expected {expected}, got {actual}")
+                os.replace(temporary_name, destination)
+                return {"path": str(destination), "size": size, "sha256": actual}
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+                last = exc
+                if temporary_name:
+                    try:
+                        os.unlink(temporary_name)
+                    except OSError:
+                        pass
+                if attempt < self.retries:
+                    time.sleep(min(2**attempt, 10))
+        raise RuntimeError(f"video download failed for run {run_id}: {last}")

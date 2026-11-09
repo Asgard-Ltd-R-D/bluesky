@@ -14,6 +14,7 @@ by repeating ``RECORDING OFF`` or by inspecting its run ID.
 from __future__ import annotations
 
 import atexit
+import json
 import secrets
 import time
 import threading
@@ -43,7 +44,7 @@ def _run_id() -> str:
     return f"{stamp}_{secrets.token_hex(3)}"
 
 
-def _start_automatic_loggers() -> Path:
+def _start_automatic_loggers(run_id: str) -> Path:
     """Start all five loggers for the current scenario run.
 
     The logger plugins must already be enabled in settings.cfg. Starting the
@@ -61,8 +62,13 @@ def _start_automatic_loggers() -> Path:
     )
     if any(logger is None for logger in loggers):
         raise RuntimeError("automatic logging requires FOVACLOG, OPCMDLOG, HEARTBEATLOG and HITLCONFLOG plugins")
-    for logger in loggers:
-        logger.start()
+    names = ('FOVACLOG', 'OPCMDLOG', 'HEARTBEATLOG', 'HITLCONFLOG')
+    for name, logger in zip(names, loggers):
+        if not logger.isopen():
+            logger.start()
+            print(f'[HITL_RECORDING] run_id={run_id} logger={name} action=start filename={logger.fname}')
+        else:
+            print(f'[HITL_RECORDING] run_id={run_id} logger={name} action=already_open filename={logger.fname}')
     hitl_conflog.hitlconflog.prevconf = set()
     hitl_fovaclog.viewtracker.reset()
     return Path(datalog.rundir)
@@ -74,7 +80,10 @@ def _external_screenrec_start(capture_start_epoch: float) -> None:
 
     if hitl_screenrec.screenrec is None:
         raise RuntimeError("HITL_SCREENREC plugin is required for external synchronization logging")
-    hitl_screenrec.screenrec.start_external(capture_start_epoch)
+    ok, message = hitl_screenrec.screenrec.start_external(capture_start_epoch)
+    if not ok:
+        raise RuntimeError(message)
+    print(f'[HITL_RECORDING] external SCREENRECLOG action=start filename={hitl_screenrec.screenrec.logger.fname}')
 
 
 class RecordingCoordinator:
@@ -102,7 +111,7 @@ class RecordingCoordinator:
             scenario = stack.get_scenname() or "untitled"
             metadata = {"recording_start_utc": datetime.now(timezone.utc).isoformat(), "host": __import__("socket").gethostname()}
             self.run_id = run_id
-            self.log_dir = _start_automatic_loggers()
+            self.log_dir = _start_automatic_loggers(run_id)
             self.capture_start_epoch = None
             self.capture_start_failed = False
             self._worker = threading.Thread(target=self._start_worker, args=(run_id, scenario, metadata), daemon=True)
@@ -159,11 +168,22 @@ class RecordingCoordinator:
                 # CSVLogger.flushes each row. reset() closes every current-run
                 # logger, which is the only reliable finalization boundary.
                 datalog.reset()
+            for path in sorted(run_dir.glob('*.log')):
+                print(f'[HITL_RECORDING] run_id={run_id} logger={path.stem.split("_")[0]} action=closed filename={path}')
             self.client.stop(run_id)
             if settings.auto_transfer_enabled:
                 for path in sorted(run_dir.glob("*.log")):
                     self.client.upload_log(run_id, path)
-                self.client.finalize(run_id)
+                finalized = self.client.finalize(run_id)
+                local_video = self.client.download_video(run_id, run_dir / "capture.mp4")
+                metadata_path = run_dir / "metadata.json"
+                ready_path = run_dir / "READY"
+                if metadata_path.exists() or ready_path.exists():
+                    raise FileExistsError(f"local run output already finalized: {run_dir}")
+                finalized["local_video"] = local_video
+                metadata_path.write_text(json.dumps(finalized, indent=2), encoding="utf-8")
+                ready_path.write_text(finalized.get("ready_utc", ""), encoding="ascii")
+                print(f'[HITL_RECORDING] run_id={run_id} video_downloaded={local_video["size"]} bytes sha256={local_video["sha256"]}')
             print(f"[HITL_RECORDING] run ready: {run_id}")
         except Exception as exc:
             print(f"[HITL_RECORDING] finalization failed for {run_id}: {exc}")

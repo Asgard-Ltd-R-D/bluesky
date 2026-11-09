@@ -64,7 +64,7 @@ class Plugin:
                 stackfuns = result[1]
                 # Add the plugin's stack functions to the stack
                 bs.stack.append_commands(stackfuns)
-            
+            self.loaded = True
 
             return True, 'Successfully loaded plugin %s' % self.plugin_name
         except ImportError as e:
