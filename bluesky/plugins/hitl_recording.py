@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import atexit
 import secrets
-import threading
 import time
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +43,40 @@ def _run_id() -> str:
     return f"{stamp}_{secrets.token_hex(3)}"
 
 
+def _start_automatic_loggers() -> Path:
+    """Start all five loggers for the current scenario run.
+
+    The logger plugins must already be enabled in settings.cfg. Starting the
+    CSVLogger objects directly avoids queueing commands into the simulation
+    stack and means the first automatic run does not depend on an operator
+    entering ON commands.
+    """
+    from bluesky.plugins import hitl_conflog, hitl_fovaclog, hitl_heartbeatlog, hitl_opcmdlog
+
+    loggers = (
+        hitl_fovaclog.fovlog,
+        hitl_opcmdlog.cmdlog,
+        hitl_heartbeatlog.heartbeatlog.logger,
+        hitl_conflog.hitlconflog.logger,
+    )
+    if any(logger is None for logger in loggers):
+        raise RuntimeError("automatic logging requires FOVACLOG, OPCMDLOG, HEARTBEATLOG and HITLCONFLOG plugins")
+    for logger in loggers:
+        logger.start()
+    hitl_conflog.hitlconflog.prevconf = set()
+    hitl_fovaclog.viewtracker.reset()
+    return Path(datalog.rundir)
+
+
+def _external_screenrec_start(capture_start_epoch: float) -> None:
+    """Enable SCREENRECLOG without starting BlueSky's local video recorder."""
+    from bluesky.plugins import hitl_screenrec
+
+    if hitl_screenrec.screenrec is None:
+        raise RuntimeError("HITL_SCREENREC plugin is required for external synchronization logging")
+    hitl_screenrec.screenrec.start_external(capture_start_epoch)
+
+
 class RecordingCoordinator:
     def __init__(self) -> None:
         self.client = RecordingClient(
@@ -52,6 +86,9 @@ class RecordingCoordinator:
             settings.transfer_retry_count,
         ) if settings.video_analysis_api_url and settings.video_analysis_api_token else None
         self.run_id: str | None = None
+        self.log_dir: Path | None = None
+        self.capture_start_epoch: float | None = None
+        self.capture_start_failed = False
         self._worker: threading.Thread | None = None
         self._lock = threading.RLock()
 
@@ -65,6 +102,9 @@ class RecordingCoordinator:
             scenario = stack.get_scenname() or "untitled"
             metadata = {"recording_start_utc": datetime.now(timezone.utc).isoformat(), "host": __import__("socket").gethostname()}
             self.run_id = run_id
+            self.log_dir = _start_automatic_loggers()
+            self.capture_start_epoch = None
+            self.capture_start_failed = False
             self._worker = threading.Thread(target=self._start_worker, args=(run_id, scenario, metadata), daemon=True)
             self._worker.start()
             return True, f"RECORDING start requested: {run_id}"
@@ -72,9 +112,27 @@ class RecordingCoordinator:
     def _start_worker(self, run_id: str, scenario: str, metadata: dict) -> None:
         try:
             result = self.client.create_run(run_id, scenario, metadata)
+            acknowledged = result.get("recording_start_utc")
+            if acknowledged:
+                self.capture_start_epoch = datetime.fromisoformat(acknowledged).timestamp()
             print(f"[HITL_RECORDING] capture started: {result.get('run_id', run_id)}")
         except Exception as exc:
+            self.capture_start_failed = True
             print(f"[HITL_RECORDING] capture start failed for {run_id}: {exc}")
+
+    def activate_external_sync_if_ready(self) -> None:
+        with self._lock:
+            epoch = self.capture_start_epoch
+            failed = self.capture_start_failed
+        if epoch is not None:
+            try:
+                _external_screenrec_start(epoch)
+                with self._lock:
+                    self.capture_start_epoch = None
+            except Exception as exc:
+                print(f"[HITL_RECORDING] external synchronization logger failed: {exc}")
+        elif failed:
+            return
 
     def stop(self, finalize_logs: bool = True, log_dir: Path | None = None) -> tuple[bool, str]:
         with self._lock:
@@ -82,9 +140,15 @@ class RecordingCoordinator:
             if run_id is None:
                 return False, "RECORDING is not active"
             self.run_id = None
+            saved_log_dir = self.log_dir
+            self.log_dir = None
             if self._worker is not None and self._worker.is_alive():
                 self._worker.join(timeout=5)
-        self._worker = threading.Thread(target=self._stop_worker, args=(run_id, finalize_logs, log_dir), daemon=True)
+        self._worker = threading.Thread(
+            target=self._stop_worker,
+            args=(run_id, finalize_logs, log_dir or saved_log_dir),
+            daemon=True,
+        )
         self._worker.start()
         return True, f"RECORDING stop requested: {run_id}"
 
@@ -107,11 +171,17 @@ class RecordingCoordinator:
     def close(self) -> None:
         with self._lock:
             run_id = self.run_id
+            log_dir = self.log_dir
             self.run_id = None
+            self.log_dir = None
+            start_worker = self._worker
+        if start_worker is not None and start_worker.is_alive():
+            start_worker.join(timeout=5)
         if run_id is not None:
-            # atexit must not delegate the final transfer to a daemon thread
-            # that Python will terminate immediately.
-            self._stop_worker(run_id, True)
+            # Close loggers before synchronously completing the transfer. This
+            # is the explicit shutdown boundary; atexit is only a fallback.
+            datalog.reset()
+            self._stop_worker(run_id, False, log_dir)
 
 
 def init_plugin():
@@ -119,13 +189,46 @@ def init_plugin():
     coordinator = RecordingCoordinator()
     atexit.register(coordinator.close)
 
+    # QUIT is the normal simulation shutdown path. Wrap it so transfer is
+    # completed before the simulation process is allowed to exit; atexit is
+    # retained only as a last-resort fallback for process termination paths.
+    original_quit = bs.sim.quit
+
+    def quit_with_recording(*args, **kwargs):
+        coordinator.close()
+        return original_quit(*args, **kwargs)
+
+    bs.sim.quit = quit_with_recording
+
     auto_start_checked = False
 
     def update():
         nonlocal auto_start_checked
+        if coordinator is not None:
+            coordinator.activate_external_sync_if_ready()
         if settings.auto_recording_enabled and not auto_start_checked and bs.sim.state == bs.OP:
             auto_start_checked = True
-            coordinator.start()
+            ok, message = coordinator.start()
+            if not ok:
+                print(f'[HITL_RECORDING] automatic start failed: {message}')
+
+    def reset():
+        """Close the previous run when a scenario is loaded/reset.
+
+        HOLD is intentionally not handled here. A reset is the lifecycle
+        boundary BlueSky uses for scenario loading; transfer runs in the
+        coordinator worker so the simulation loop is not blocked.
+        """
+        nonlocal auto_start_checked
+        auto_start_checked = False
+        if coordinator is None or coordinator.run_id is None:
+            return
+        run_id = coordinator.run_id
+        log_dir = coordinator.log_dir
+        datalog.reset()
+        ok, message = coordinator.stop(finalize_logs=False, log_dir=log_dir)
+        if not ok:
+            print(f'[HITL_RECORDING] reset finalization skipped for {run_id}: {message}')
 
     @stack.command(name="RECORDING")
     def recording(flag: "onoff" = None):
@@ -137,5 +240,11 @@ def init_plugin():
         datalog.reset()
         return coordinator.stop(finalize_logs=False, log_dir=log_dir)
 
-    config = {"plugin_name": "HITL_RECORDING", "plugin_type": "sim", "update_interval": 0.5, "update": update}
+    config = {
+        "plugin_name": "HITL_RECORDING",
+        "plugin_type": "sim",
+        "update_interval": 0.5,
+        "update": update,
+        "reset": reset,
+    }
     return config, {}

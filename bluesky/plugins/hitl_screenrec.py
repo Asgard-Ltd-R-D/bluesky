@@ -84,6 +84,7 @@ class HitlScreenrec(Entity):
         super().__init__()
         self.logger = datalog.crelog('SCREENRECLOG', None, screenrecheader)
         self.proc = None
+        self.external = False
         self.fname = None
         self.t0 = 0.0
         atexit.register(self.stop)
@@ -105,6 +106,7 @@ class HitlScreenrec(Entity):
     def start(self):
         # Always a fresh file, even if a recording was already running
         self.stop()
+        self.external = False
         ffmpeg = find_ffmpeg()
         if ffmpeg is None:
             return False, 'SCREENREC: ffmpeg not found - run ' + \
@@ -137,18 +139,37 @@ class HitlScreenrec(Entity):
         self.log_sync()
         return True, f'SCREENREC recording to {self.fname}'
 
+    def start_external(self, capture_start_epoch=None):
+        """Start only the synchronization logger for an external capture.
+
+        The Elgato video is recorded by the remote capture service. This
+        method deliberately does not start BlueSky's gdigrab process.
+        ``capture_start_epoch`` is the UTC wall-clock timestamp acknowledged
+        by the capture service; until it arrives, the coordinator leaves this
+        logger inactive rather than inventing a video timestamp.
+        """
+        self.stop()
+        self.external = True
+        self.fname = None
+        self.t0 = float(capture_start_epoch) if capture_start_epoch is not None else time.time()
+        self.logger.start()
+        self.log_sync()
+        return True, 'SCREENREC external synchronization logging enabled'
+
     def stop(self):
-        if self.proc is None:
+        if self.proc is None and not self.external:
             return
         proc, self.proc = self.proc, None
-        try:
-            # 'q' on stdin makes ffmpeg finish the file cleanly
-            proc.stdin.write(b'q')
-            proc.stdin.flush()
-            proc.stdin.close()
-            proc.wait(timeout=10)
-        except Exception:
-            proc.kill()
+        self.external = False
+        if proc is not None:
+            try:
+                # 'q' on stdin makes ffmpeg finish the file cleanly
+                proc.stdin.write(b'q')
+                proc.stdin.flush()
+                proc.stdin.close()
+                proc.wait(timeout=10)
+            except Exception:
+                proc.kill()
         self.logger.reset()
 
     def log_sync(self):
@@ -157,12 +178,13 @@ class HitlScreenrec(Entity):
 
     @timed_function(name='HITL_SCREENREC', dt=1.0)
     def update(self, dt):
-        if self.proc is None:
+        if self.proc is None and not self.external:
             return
-        if self.proc.poll() is not None:
+        if self.proc is not None and self.proc.poll() is not None:
             stack.stack(f'ECHO SCREENREC: ffmpeg stopped unexpectedly '
                         f'(exit code {self.proc.returncode})')
             self.proc = None
+            self.external = False
             self.logger.reset()
             return
         self.log_sync()
