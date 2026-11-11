@@ -70,7 +70,10 @@ def _start_automatic_loggers(run_id: str) -> Path:
         else:
             print(f'[HITL_RECORDING] run_id={run_id} logger={name} action=already_open filename={logger.fname}')
     hitl_conflog.hitlconflog.prevconf = set()
-    hitl_fovaclog.viewtracker.reset()
+    # Do not reset the view tracker here. The simulator client sends the
+    # actual radar pan/zoom/aspect-ratio snapshot during scenario loading;
+    # resetting it at automatic recording start loses that snapshot and makes
+    # FOVACLOG use the default square viewport.
     return Path(datalog.rundir)
 
 

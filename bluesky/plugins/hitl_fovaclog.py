@@ -99,7 +99,7 @@ def init_plugin():
 def update():
     """ Called every update_interval seconds by the plugin loader. """
     try:
-        if not fovlog.isopen() or bs.traf.ntraf == 0:
+        if not fovlog.isopen() or bs.traf.ntraf == 0 or not viewtracker.ready:
             return
 
         lat, lon = bs.traf.lat, bs.traf.lon
@@ -155,6 +155,7 @@ class ViewTracker:
         self.zoom = 0.4   # BlueSky's own startup default, bluesky/stack/simstack.py
         self.ar = 1.0     # Assume a square viewport until told otherwise
         self.size = None  # Radar widget size in pixels, if the client sent it
+        self.ready = False
 
     @staticmethod
     def _default_pan():
@@ -179,6 +180,18 @@ class ViewTracker:
                 self.ar = ar
             if size is not None:
                 self.size = tuple(size)
+                # The client normally sends `ar`, but derive it from the
+                # actual radar widget dimensions when an older client omits
+                # that field.
+                if ar is None and len(self.size) == 2 and self.size[1] > 0:
+                    self.ar = self.size[0] / self.size[1]
+            # Only log visibility after receiving a complete client snapshot.
+            # The defaults above are not safe for ground-truth generation.
+            self.ready = (
+                pan is not None and zoom is not None and
+                self.size is not None and len(self.size) == 2 and
+                min(self.size) > 0 and self.ar > 0 and self.zoom > 0
+            )
         except Exception as e:
             print(f'[HITL_FOVACLOG] PANZOOM handling failed: {e}')
 
