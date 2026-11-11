@@ -56,3 +56,36 @@ class RecordingClient:
     def finalize(self, run_id: str) -> dict[str, Any]:
         return self.request("POST", f"/api/v1/runs/{run_id}/finalize")
 
+    def download_video(self, run_id: str, destination: Path) -> Path:
+        """Download the finalized remote MP4 atomically into the log folder."""
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_suffix(destination.suffix + ".part")
+        last: Exception | None = None
+        for attempt in range(self.retries + 1):
+            request = urllib.request.Request(
+                self.base_url + f"/api/v1/runs/{run_id}/video",
+                method="GET",
+                headers={"Authorization": f"Bearer {self.token}"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    with temporary.open("wb") as output:
+                        while True:
+                            chunk = response.read(1024 * 1024)
+                            if not chunk:
+                                break
+                            output.write(chunk)
+                if temporary.stat().st_size == 0:
+                    raise RuntimeError("downloaded video is empty")
+                temporary.replace(destination)
+                return destination
+            except (urllib.error.URLError, TimeoutError, OSError, RuntimeError) as exc:
+                last = exc
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                if attempt < self.retries:
+                    time.sleep(min(2**attempt, 10))
+        raise RuntimeError(f"capture service request failed: GET /api/v1/runs/{run_id}/video: {last}")
+

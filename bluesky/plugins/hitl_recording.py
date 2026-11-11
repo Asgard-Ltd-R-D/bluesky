@@ -175,8 +175,12 @@ class RecordingCoordinator:
                 for path in sorted(run_dir.glob("*.log")):
                     self.client.upload_log(run_id, path)
                 finalized = self.client.finalize(run_id)
+                video_path = run_dir / f"{run_id}.mp4"
+                self.client.download_video(run_id, video_path)
                 metadata_path = run_dir / "metadata.json"
                 if not metadata_path.exists():
+                    finalized["local_video_filename"] = video_path.name
+                    finalized["local_video_size"] = video_path.stat().st_size
                     metadata_path.write_text(json.dumps(finalized, indent=2), encoding="utf-8")
             print(f"[HITL_RECORDING] remote run ready: {run_id}; local logs retained, video remains on capture host")
         except Exception as exc:
